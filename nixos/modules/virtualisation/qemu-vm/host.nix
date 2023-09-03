@@ -173,7 +173,8 @@ in
       forwardPorts = lib.mkOption {
         default = [ ];
         example = lib.literalExpression ''
-          [ # forward local port 2222 -> 22, to ssh into the VM
+          [
+            # forward local port 2222 -> 22, to ssh into the VM
             { from = "host"; host.port = 2222; guest.port = 22; }
 
             # forward local port 80 -> 10.0.2.10:80 in the VLAN
@@ -277,6 +278,12 @@ in
         description = lib.mdDoc "Options passed to QEMU.";
       };
 
+      extraCommands = lib.mkOption {
+        type = lib.types.listOf lib.types.str;
+        default = [ ];
+        description = lib.mdDoc "Extra commands to exeute before invoking QEMU.";
+      };
+
       blockDevices = lib.mkOption {
         description = lib.mdDoc "Block devices passed to QEMU.";
         type = lib.types.attrsOf (lib.types.submodule {
@@ -320,7 +327,6 @@ in
       };
 
     };
-
 
   };
 
@@ -367,6 +373,7 @@ in
           '';
         }
       ];
+
 
     virtualisation.qemu.options =
       let
@@ -474,6 +481,7 @@ in
         ])
       ];
 
+
     system.build.vm =
       let
         startVM = ''
@@ -489,6 +497,10 @@ in
           fi
 
           cd "$TMPDIR"
+
+          ${lib.optionalString cfg.firmware.efi.enable ''
+            NIX_EFI_VARS=$(readlink -f "''${NIX_EFI_VARS:-${cfg.firmware.efi.variables}}")
+          ''}
 
           exec ${qemu-common.qemuBinary qemu} \
               -name ${config.system.name} \
