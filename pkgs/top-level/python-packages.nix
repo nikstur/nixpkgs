@@ -11086,6 +11086,8 @@ self: super: with self; {
 
   regional = callPackage ../development/python-modules/regional { };
 
+  regress = callPackage ../development/python-modules/regress { };
+
   reikna = callPackage ../development/python-modules/reikna { };
 
   related = callPackage ../development/python-modules/related { };
