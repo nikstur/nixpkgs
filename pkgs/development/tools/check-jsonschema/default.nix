@@ -4,7 +4,7 @@ with python3.pkgs;
 
 buildPythonApplication rec {
   pname = "check-jsonschema";
-  version = "0.23.3";
+  version = "0.26.3";
   format = "setuptools";
 
   disabled = pythonOlder "3.7";
@@ -13,12 +13,13 @@ buildPythonApplication rec {
     owner = "python-jsonschema";
     repo = "check-jsonschema";
     rev = version;
-    hash = "sha256-gPFG1AgInakF8leMM0c1zZt2OdZdIKcUmItwICV8p1I=";
+    hash = "sha256-aTgeo2gvllow6tyRECcddOVODN/bgXH5UVQHmlt16NE=";
   };
 
   propagatedBuildInputs = [
     ruamel-yaml
     jsonschema
+    regress
     requests
     click
   ];
@@ -32,6 +33,11 @@ buildPythonApplication rec {
   pythonImportsCheck = [
     "check_jsonschema"
     "check_jsonschema.cli"
+  ];
+
+  disabledTests = [
+    # Try to download files
+    "test_schema_loader"
   ];
 
   meta = with lib; {
