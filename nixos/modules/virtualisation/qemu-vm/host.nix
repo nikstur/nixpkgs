@@ -1,7 +1,7 @@
 # Configure a VM on the host. Only contains options to do this. All options
 # that mix the levels of abstraction, i.e. configure something on the host AND
-# in the guest belong in qemu-vm-guest.nix. This module offers abstractions
-# that can be used to build higher-level functionality.
+# in the guest belong in guest.nix. This module offers abstractions that can be
+# used to build higher-level functionality.
 
 { config, lib, pkgs, options, ... }:
 
@@ -60,6 +60,103 @@ in
 
         Changing this to e.g. a Darwin package set allows running NixOS VMs on Darwin.
       '';
+    };
+
+
+    images = lib.mkOption {
+      default = [ ];
+      example = {
+        "existing-image" = {
+          file = "/path/to/existing/image.raw";
+        };
+        "image-to-create" = {
+          file = "/path/to/image/to/create.raw";
+          create = true;
+          size = "1G";
+        };
+        "temporary-image-to-create" = {
+          create = true;
+          size = "1G";
+        };
+        "backed-image" = {
+          file = "/path/to/target/image.qcow2";
+          backing.file = "/path/to/source/image.raw";
+        };
+      };
+      description = lib.mdDoc ''
+        Images to be passed to the VM.
+
+        You can create the images by setting `create = true;`.
+
+        You can create an image backed by another via the `backing` option.
+      '';
+      type = with lib.types; attrsOf
+        (submodule {
+          options = {
+
+            file = mkOption {
+              type = nullOr str;
+              description = lib.mdDoc ''
+                Path to disk image on the host.
+
+                If it's `null`, a tmpfile is created.
+              '';
+            };
+
+            create = lib.mkOption {
+              type = bool;
+              default = false;
+              description = lib.mdDoc "Whether to create the image before starting the VM.";
+            };
+
+            size = lib.mkOption {
+              type = int;
+              default = "512M";
+              description = "Size of the image";
+            };
+
+            fsType = lib.mkOption {
+              type = enum [ "ext4" "vfat" "btrfs" ];
+              default = "ext4";
+              description = lib.mdDoc ''
+                The file system to create inside the image.
+              '';
+            };
+
+            backing = lib.mkOption {
+              example = {
+                file = "/path/to/image.raw";
+                sourceFormat = "raw";
+              };
+              description = lib.mdDoc ''
+                Disk images backed by another image.
+
+                This is implemented as a Copy-on-Write image on top of the source file.
+              '';
+              type = submodule {
+                options = {
+
+                  file = mkOption {
+                    type = nullOr path;
+                    default = null;
+                    description = lib.mdDoc ''
+                      The source file for creating a backed image.
+
+                      If this is `null`, no backing image is created.
+                    '';
+                  };
+
+                  sourceFormat = mkOption {
+                    type = enum [ "raw" "qcow2" ];
+                    default = "raw";
+                  };
+
+                };
+              };
+            };
+
+          };
+        });
     };
 
 
@@ -278,12 +375,6 @@ in
         description = lib.mdDoc "Options passed to QEMU.";
       };
 
-      extraCommands = lib.mkOption {
-        type = lib.types.listOf lib.types.str;
-        default = [ ];
-        description = lib.mdDoc "Extra commands to exeute before invoking QEMU.";
-      };
-
       blockDevices = lib.mkOption {
         description = lib.mdDoc "Block devices passed to QEMU.";
         type = lib.types.attrsOf (lib.types.submodule {
@@ -440,7 +531,10 @@ in
       in
       lib.mkMerge [
         # Always included
-        [ "-device virtio-rng-pci" ]
+        [
+          "-device virtio-rng-pci"
+          "-device virtio-keyboard"
+        ]
         blockDeviceOptions
         fsDeviceOptions
         networkingOptions

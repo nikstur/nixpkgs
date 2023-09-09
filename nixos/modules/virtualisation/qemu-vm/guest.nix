@@ -10,76 +10,13 @@ in
 
   options.vitualisation = {
 
-    emptyDiskImages = lib.mkOption {
-      default = { };
-      example = {
-        name = {
-          size = "1G";
-          filesystem = "ext4";
-        };
-      };
-      description = lib.mdDoc ''
-        Disk images to provide to the VM.
-      '';
-      type = with lib.types; attrsOf (submodule {
-        options = {
-
-          size = mkOption {
-            type = str;
-          };
-
-          format = mkOption {
-            type = enum [ "raw" "qcow2" ];
-            default = "qcow2";
-          };
-
-          filesystem = mkOption {
-            type = enum [ "none" "ext4" ];
-            default = "none";
-          };
-
-        };
-      });
-    };
-
-    backedDiskImages = lib.mkOption {
-      example = {
-        name = {
-          file = "/path/to/image.raw";
-          sourceFormat = "raw";
-          targetFormat = "qcow2";
-        };
-      };
-      description = lib.mdDoc ''
-        Disk images backed by another image.
-
-        This is implemented as a Copy-on-Write image on top of the source file.
-      '';
-      type = with lib.types; attrsOf (submodule {
-        options = {
-
-          file = mkOption {
-            type = path;
-          };
-
-          sourceFormat = mkOption {
-            type = enum [ "raw" "qcow2" ];
-            default = "raw";
-          };
-
-          targetFormat = mkOption {
-            type = enum [ "raw" "qcow2" ];
-            default = "qcow2";
-          };
-
-        };
-      });
-    };
-
     sharedDirectories = lib.mkOption {
       default = { };
       example = {
-        my-share = { source = "/path/to/be/shared"; target = "/mnt/shared"; };
+        "my-share" = {
+          source = "/path/to/be/shared";
+          target = "/mnt/shared";
+        };
       };
       description = lib.mdDoc ''
         An attributes set of directories that will be shared with the
@@ -89,24 +26,28 @@ in
       type = with lib.types; attrsOf (submodule {
         options = {
 
-          source = mkOption {
+          source = lib.mkOption {
             type = str;
-            description = lib.mdDoc "The path of the directory to share, can be a shell variable";
+            description = lib.mdDoc ''
+              The path of the directory to share.
+
+              Can be a shell variable.
+            '';
           };
 
-          target = mkOption {
+          target = lib.mkOption {
             type = path;
-            description = lib.mdDoc "The mount point of the directory inside the virtual machine";
+            description = lib.mdDoc "The mount point of the directory inside the virtual machine.";
           };
 
-          fsOptions = mkOption {
+          fsOptions = lib.mkOption {
             type = attrsOf str;
             default = {
               trans = "virtio";
               version = "9p2000.L";
               msize = "16384";
             };
-            description = lib.mdDoc "`fileSystems` options for the shared directory";
+            description = lib.mdDoc "`fileSystems` options for the shared directory.";
           };
 
         };
@@ -127,14 +68,14 @@ in
         type = with lib.types; attrsOf (submodule {
           options = {
 
-            vlan = mkOption {
+            vlan = lib.mkOption {
               type = ints.unsigned;
               description = lib.mdDoc ''
                 VLAN to which the network interface is connected.
               '';
             };
 
-            assignIP = mkOption {
+            assignIP = lib.mkOption {
               type = bool;
               default = false;
               description = lib.mdDoc ''
@@ -164,7 +105,16 @@ in
 
   };
 
+  imports = [
+    ../profiles/qemu-guest.nix
+  ];
+
   config = {
+
+
+    virtualisation.qemu = {
+      fsDevices = lib.mapAttrs (n: v: { path = v; }) cfg.sharedDirectories;
+    };
 
 
     fileSystems =
@@ -182,56 +132,9 @@ in
       lib.mapAttrs' mkSharedDir cfg.sharedDirectories;
 
 
-    boot.initrd = {
-
-      availableKernelModules = lib.optional cfg.writableStore "overlay";
-
-      postMountCommands = lib.mkIf (!config.boot.initrd.systemd.enable) ''
-        # Mark this as a NixOS machine.
-        mkdir -p $targetRoot/etc
-        echo -n > $targetRoot/etc/NIXOS
-
-        # Fix the permissions on /tmp.
-        chmod 1777 $targetRoot/tmp
-
-        mkdir -p $targetRoot/boot
-
-        ${lib.optionalString cfg.writableStore ''
-          echo "mounting overlay filesystem on /nix/store..."
-          mkdir -p -m 0755 $targetRoot/nix/.rw-store/store $targetRoot/nix/.rw-store/work $targetRoot/nix/store
-          mount -t overlay overlay $targetRoot/nix/store \
-            -o lowerdir=$targetRoot/nix/.ro-store,upperdir=$targetRoot/nix/.rw-store/store,workdir=$targetRoot/nix/.rw-store/work || fail
-        ''}
-      '';
-
-      systemd = lib.mkIf (config.boot.initrd.systemd.enable && cfg.writableStore) {
-        mounts = [{
-          where = "/sysroot/nix/store";
-          what = "overlay";
-          type = "overlay";
-          options = "lowerdir=/sysroot/nix/.ro-store,upperdir=/sysroot/nix/.rw-store/store,workdir=/sysroot/nix/.rw-store/work";
-          wantedBy = [ "initrd-fs.target" ];
-          before = [ "initrd-fs.target" ];
-          requires = [ "rw-store.service" ];
-          after = [ "rw-store.service" ];
-          unitConfig.RequiresMountsFor = "/sysroot/nix/.ro-store";
-        }];
-        services.rw-store = {
-          unitConfig = {
-            DefaultDependencies = false;
-            RequiresMountsFor = "/sysroot/nix/.rw-store";
-          };
-          serviceConfig = {
-            Type = "oneshot";
-            ExecStart = "/bin/mkdir -p -m 0755 /sysroot/nix/.rw-store/store /sysroot/nix/.rw-store/work /sysroot/nix/store";
-          };
-        };
-      };
-
-    };
 
 
-    systemd.tmpfiles.rules = lib.mkIf config.boot.initrd.systemd.enable [
+    systemd.tmpfiles.rules = [
       "f /etc/NIXOS 0644 root root -"
       "d /boot 0644 root root -"
     ];
@@ -269,3 +172,4 @@ in
   meta.maintainers = with lib.maintainers; [ nikstur raitobezarius ];
 
 }
+
