@@ -160,7 +160,17 @@ in
       '';
     };
 
-    bootLoaderDevice = mkOption {
+    rootDevice = lib.mkOption {
+      type = types.nullOr types.path;
+      default = "/dev/disk/by-label/${rootFilesystemLabel}";
+      defaultText = literalExpression ''/dev/disk/by-label/${rootFilesystemLabel}'';
+      example = "/dev/disk/by-label/nixos";
+      description = lib.mdDoc ''
+        The path (inside the VM) to the device containing the root filesystem.
+      '';
+    };
+
+    bootLoaderDevice = lib.mkOption {
       type = types.path;
       default = "/dev/disk/by-id/virtio-${rootDriveSerialAttr}";
       defaultText = literalExpression ''/dev/disk/by-id/virtio-${rootDriveSerialAttr}'';
@@ -175,55 +185,33 @@ in
       default = if cfg.useEFIBoot then "/dev/disk/by-label/${espFilesystemLabel}" else null;
       defaultText = literalExpression ''if cfg.useEFIBoot then "/dev/disk/by-label/${espFilesystemLabel}" else null'';
       example = "/dev/disk/by-label/esp";
-      description =
-        lib.mdDoc ''
-          The path (inside the VM) to the device containing the EFI System Partition (ESP).
+      description = lib.mdDoc ''
+        The path (inside the VM) to the device containing the EFI System Partition (ESP).
 
-          If you are *not* booting from a UEFI firmware, this value is, by
-          default, `null`. The ESP is mounted under `/boot`.
-        '';
-    };
-
-    rootDevice = lib.mkOption {
-      type = types.nullOr types.path;
-      default = "/dev/disk/by-label/${rootFilesystemLabel}";
-      defaultText = literalExpression ''/dev/disk/by-label/${rootFilesystemLabel}'';
-      example = "/dev/disk/by-label/nixos";
-      description =
-        lib.mdDoc ''
-          The path (inside the VM) to the device containing the root filesystem.
-        '';
+        If you are *not* booting from a UEFI firmware, this value is, by
+        default, `null`. The ESP is mounted under `/boot`.
+      '';
     };
 
     useBootLoader = lib.mkOption {
       type = types.bool;
       default = false;
-      description =
-        lib.mdDoc ''
-          Use a boot loader to boot the system.
-          This allows, among other things, testing the boot loader.
+      description = lib.mdDoc ''
+        Use a boot loader to boot the system.
+        This allows, among other things, testing the boot loader.
 
-          If disabled, the kernel and initrd are directly booted,
-          forgoing any bootloader.
-        '';
+        If disabled, the kernel and initrd are directly booted,
+        forgoing any bootloader.
+      '';
     };
 
 
     additionalPaths = lib.mkOption {
-      type = types.listOf types.path;
+      type = lib.types.listOf lib.types.path;
       default = [ ];
       description = lib.mdDoc ''
         A list of paths whose closure should be made available to
         the VM.
-
-        When 9p is used, the closure is registered in the Nix
-        database in the VM. All other paths in the host Nix store
-        appear in the guest Nix store as well, but are considered
-        garbage (because they are not registered in the Nix
-        database of the guest).
-
-        When {option}`virtualisation.useNixStoreImage` is
-        set, the closure is copied to the Nix store image.
       '';
     };
 
@@ -236,58 +224,6 @@ in
       '';
     };
 
-
-    store = {
-
-      writable = lib.mkOption {
-        type = lib.types.bool;
-        default = cfg.mountHostNixStore;
-        defaultText = literalExpression "cfg.mountHostNixStore";
-        description = lib.mdDoc ''
-          If enabled, the Nix store in the VM is made writable by
-          layering an overlay filesystem on top of the host's Nix
-          store.
-
-          By default, this is enabled if you mount a host Nix store.
-        '';
-      };
-
-      tmpfs = lib.mkOption {
-        type = lib.types.bool;
-        default = true;
-        description = lib.mdDoc ''
-          Use a tmpfs for the writable store instead of writing to the VM's
-          own filesystem.
-        '';
-      };
-
-      image = lib.mkOption {
-        type = lib.types.bool;
-        default = false;
-        description = lib.mdDoc ''
-          Build and use a disk image for the Nix store, instead of
-          accessing the host's one through 9p.
-
-          For applications which do a lot of reads from the store,
-          this can drastically improve performance, but at the cost of
-          disk space and image build time.
-
-          As an alternative, you can use a bootloader which will provide you
-          with a full NixOS system image containing a Nix store and
-          avoid mounting the host nix store through
-          {option}`virtualisation.mountHostNixStore`.
-        '';
-      };
-
-      mountHostNixStore = lib.mkOption {
-        type = lib.types.bool;
-        default = !cfg.useNixStoreImage && !cfg.useBootLoader;
-        defaultText = literalExpression "!cfg.useNixStoreImage && !cfg.useBootLoader";
-        description = lib.mdDoc ''
-          Mount the host Nix store as a 9p mount.
-        '';
-      };
-    };
 
   };
 
@@ -320,11 +256,23 @@ in
 
       additionalPaths = [ config.system.build.toplevel ];
 
-      images = {
-        root = {
-          file = ''"$NIX_DISK_IMAGE"'';
-        };
-      };
+      images = lib.mkMerge [
+        ({
+          root = {
+            file = ''"$NIX_DISK_IMAGE"'';
+            format = "";
+            bootindex = 1;
+            serialAttr = rootDriveSerialAttr;
+          };
+        })
+        (lib.mkIf cfg.store.image {
+          nix-store = {
+            file = ''"$TMPDIR"/store.img'';
+            format = "";
+            bootindex = 2;
+          };
+        })
+      ];
 
       sharedDirectories = {
         nix-store = lib.mkIf cfg.mountHostNixStore {
@@ -397,40 +345,4 @@ in
     };
 
 
-    boot.initrd = {
-
-      availableKernelModules = lib.optional cfg.writableStore "overlay";
-
-      postMountCommands = lib.mkIf (!config.boot.initrd.systemd.enable && cfg.writableStore) ''
-        echo "mounting overlay filesystem on /nix/store..."
-        mkdir -p -m 0755 $targetRoot/nix/.rw-store/store $targetRoot/nix/.rw-store/work $targetRoot/nix/store
-        mount -t overlay overlay $targetRoot/nix/store \
-          -o lowerdir=$targetRoot/nix/.ro-store,upperdir=$targetRoot/nix/.rw-store/store,workdir=$targetRoot/nix/.rw-store/work || fail
-      '';
-
-      systemd = lib.mkIf (config.boot.initrd.systemd.enable && cfg.writableStore) {
-        mounts = [{
-          where = "/sysroot/nix/store";
-          what = "overlay";
-          type = "overlay";
-          options = "lowerdir=/sysroot/nix/.ro-store,upperdir=/sysroot/nix/.rw-store/store,workdir=/sysroot/nix/.rw-store/work";
-          wantedBy = [ "initrd-fs.target" ];
-          before = [ "initrd-fs.target" ];
-          requires = [ "rw-store.service" ];
-          after = [ "rw-store.service" ];
-          unitConfig.RequiresMountsFor = "/sysroot/nix/.ro-store";
-        }];
-        services.rw-store = {
-          unitConfig = {
-            DefaultDependencies = false;
-            RequiresMountsFor = "/sysroot/nix/.rw-store";
-          };
-          serviceConfig = {
-            Type = "oneshot";
-            ExecStart = "/bin/mkdir -p -m 0755 /sysroot/nix/.rw-store/store /sysroot/nix/.rw-store/work /sysroot/nix/store";
-          };
-        };
-      };
-
-    };
   }

@@ -63,100 +63,126 @@ in
     };
 
 
-    images = lib.mkOption {
-      default = [ ];
+    createImages = lib.mkOption {
       example = {
-        "existing-image" = {
-          file = "/path/to/existing/image.raw";
-        };
         "image-to-create" = {
           file = "/path/to/image/to/create.raw";
-          create = true;
           size = "1G";
         };
         "temporary-image-to-create" = {
-          create = true;
           size = "1G";
-        };
-        "backed-image" = {
-          file = "/path/to/target/image.qcow2";
-          backing.file = "/path/to/source/image.raw";
         };
       };
       description = lib.mdDoc ''
-        Images to be passed to the VM.
+        Create disk images and pass them to the VM.
 
-        You can create the images by setting `create = true;`.
-
-        You can create an image backed by another via the `backing` option.
+        You can create temporary as well as persistent images.
       '';
-      type = with lib.types; attrsOf
-        (submodule {
-          options = {
+      type = with lib.types; attrsOf (submodule {
+        options = {
+
+          file = mkOption {
+            type = nullOr str;
+            default = null;
+            description = lib.mdDoc ''
+              Path on the host to store the created disk image.
+
+              If it's `null`, a temporary file is created.
+            '';
+          };
+
+          format = mkOption {
+            type = lib.types.enum [ "qcow" "raw" ];
+            default = "raw";
+            description = lib.mdDoc ''
+              The format of the image.
+
+              Only images of format `raw` can be created to contain filesystems.
+            '';
+          };
+
+          size = lib.mkOption {
+            type = int;
+            default = "512M";
+            description = "The size of the image.";
+          };
+
+          filesystem = lib.mkOption {
+            type = enum [ "ext4" "vfat" "btrfs" ];
+            default = "ext4";
+            description = lib.mdDoc ''
+              The file system to create inside the image.
+            '';
+          };
+
+        };
+      });
+    };
+
+    backedImages = lib.mkOption {
+      example = {
+        "temporary-backed-file" = {
+          source.file = "/path/to/image.raw";
+          source.format = "raw";
+        };
+        "persistent-backed-file" = {
+          source.file = "/path/to/image.raw";
+          source.format = "raw";
+          target.file = "/path/to/persistent/image.qcow2";
+        };
+      };
+      description = lib.mdDoc ''
+        Disk images backed by another image.
+
+        This is implemented as a QCOW2 Copy-on-Write image on top of the source file.
+      '';
+      type = with lib.types; attrsOf (submodule {
+        options = {
+
+          source = {
+
+            file = mkOption {
+              type = nullOr path;
+              default = null;
+              description = lib.mdDoc ''
+                The source file to use a the backing image.
+
+                If this is `null`, no backing image is created.
+              '';
+            };
+
+            format = mkOption {
+              type = enum [ "raw" "qcow2" ];
+              default = "raw";
+            };
+
+          };
+
+          target = {
 
             file = mkOption {
               type = nullOr str;
               description = lib.mdDoc ''
-                Path to disk image on the host.
+                Path to the disk image on the host.
 
-                If it's `null`, a tmpfile is created.
+                If this option is `null`, a temporary file is created and
+                passed to the VM. This is useful if you simply want to make a
+                read-only image (e.g. because it comes from the Nix store)
+                writable but do not care about *what* gets written to it.
               '';
-            };
-
-            create = lib.mkOption {
-              type = bool;
-              default = false;
-              description = lib.mdDoc "Whether to create the image before starting the VM.";
-            };
-
-            size = lib.mkOption {
-              type = int;
-              default = "512M";
-              description = "Size of the image";
-            };
-
-            fsType = lib.mkOption {
-              type = enum [ "ext4" "vfat" "btrfs" ];
-              default = "ext4";
-              description = lib.mdDoc ''
-                The file system to create inside the image.
-              '';
-            };
-
-            backing = lib.mkOption {
-              example = {
-                file = "/path/to/image.raw";
-                sourceFormat = "raw";
-              };
-              description = lib.mdDoc ''
-                Disk images backed by another image.
-
-                This is implemented as a Copy-on-Write image on top of the source file.
-              '';
-              type = submodule {
-                options = {
-
-                  file = mkOption {
-                    type = nullOr path;
-                    default = null;
-                    description = lib.mdDoc ''
-                      The source file for creating a backed image.
-
-                      If this is `null`, no backing image is created.
-                    '';
-                  };
-
-                  sourceFormat = mkOption {
-                    type = enum [ "raw" "qcow2" ];
-                    default = "raw";
-                  };
-
-                };
-              };
             };
 
           };
-        });
+
+        };
+
+      });
+    };
+
+
+    images = lib.mkOption {
+      default = [ ];
+
     };
 
 

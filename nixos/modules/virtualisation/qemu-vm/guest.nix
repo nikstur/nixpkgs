@@ -4,6 +4,8 @@ let
 
   cfg = config.virtualisation;
 
+  writableStoreOverlay = cfg.nixStore.writeableOverlay != null;
+
 in
 
 {
@@ -52,6 +54,56 @@ in
 
         };
       });
+    };
+
+
+    nixStore = {
+
+      mountFromHost = lib.mkOption {
+        type = lib.types.bool;
+        default = false;
+        description = lib.mdDoc ''
+          Mount the host's Nix store into the VM.
+        '';
+      };
+
+      writableOverlay = lib.mkOption {
+        type = lib.types.nullOr lib.types.enum [ "persistent" "temporary" ];
+        default = null;
+        description = lib.mdDoc ''
+          If this is set to anything but `null`, an overlay filesystem is
+          layered on top of the Nix store. This means that no data is written
+          to the underlying directory anymore.
+
+          If set to `persistent`, created overlay filesystem persists data
+          written to Nix store to the block device that backs `/`.
+
+          If set to `temporary`, an ephemeral tmpfs is layered over the Nix store.
+
+          This option is useful when you have a read-only Nix store that you
+          want to make writable, e.g. in a tests where you mount the Nix store
+          from the host.
+        '';
+      };
+
+      image = lib.mkOption {
+        type = lib.types.bool;
+        default = false;
+        description = lib.mdDoc ''
+          Build and use a disk image for the Nix store, instead of accessing
+          the host's one through 9p.
+
+          For applications which do a lot of reads from the store, this can
+          drastically improve performance, but at the cost of disk space and
+          image build time.
+
+          As an alternative, you can use a bootloader which will provide you
+          with a full NixOS system image containing a Nix store and avoid
+          mounting the host nix store through
+          {option}`virtualisation.mountHostNixStore`.
+        '';
+      };
+
     };
 
 
@@ -105,12 +157,13 @@ in
 
   };
 
+
   imports = [
     ../profiles/qemu-guest.nix
   ];
 
-  config = {
 
+  config = {
 
     virtualisation.qemu = {
       fsDevices = lib.mapAttrs (n: v: { path = v; }) cfg.sharedDirectories;
@@ -132,7 +185,49 @@ in
       lib.mapAttrs' mkSharedDir cfg.sharedDirectories;
 
 
+    boot.initrd = {
 
+      availableKernelModules = lib.optional writableStoreOverlay "overlay";
+
+      postMountCommands = lib.mkIf (!config.boot.initrd.systemd.enable && writableStoreOverlay) ''
+        echo "mounting overlay filesystem on /nix/store..."
+        mkdir -p -m 0755 $targetRoot/nix/.rw-store/store $targetRoot/nix/.rw-store/work $targetRoot/nix/store
+        mount -t overlay overlay $targetRoot/nix/store \
+          -o lowerdir=$targetRoot/nix/.ro-store,upperdir=$targetRoot/nix/.rw-store/store,workdir=$targetRoot/nix/.rw-store/work || fail
+      '';
+
+      systemd = lib.mkIf (config.boot.initrd.systemd.enable && writableStoreOverlay) {
+        mounts = [{
+          where = "/sysroot/nix/store";
+          what = "overlay";
+          type = "overlay";
+          options = ''
+            lowerdir=/sysroot/nix/.ro-store,upperdir=/sysroot/nix/.rw-store/store,workdir=/sysroot/nix/.rw-store/work
+          '';
+          wantedBy = [ "initrd-fs.target" ];
+          before = [ "initrd-fs.target" ];
+          requires = [ "rw-store.service" ];
+          after = [ "rw-store.service" ];
+          unitConfig.RequiresMountsFor = "/sysroot/nix/.ro-store";
+        }];
+        services.rw-store = {
+          unitConfig = {
+            DefaultDependencies = false;
+            RequiresMountsFor = "/sysroot/nix/.rw-store";
+          };
+          serviceConfig = {
+            Type = "oneshot";
+            ExecStart = ''
+              /bin/mkdir -p -m 0755 \
+              /sysroot/nix/.rw-store/store \
+              /sysroot/nix/.rw-store/work \
+              /sysroot/nix/store
+            '';
+          };
+        };
+      };
+
+    };
 
     systemd.tmpfiles.rules = [
       "f /etc/NIXOS 0644 root root -"
@@ -164,7 +259,7 @@ in
       (isYes "NETWORK_FILESYSTEMS")
       (isYes "SERIAL_8250_CONSOLE")
       (isYes "SERIAL_8250")
-    ] ++ optionals (cfg.writableStore) [
+    ] ++ optionals writableStoreOverlay [
       (isEnabled "OVERLAY_FS")
     ];
   };
