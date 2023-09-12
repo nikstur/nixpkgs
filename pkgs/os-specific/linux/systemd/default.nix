@@ -157,7 +157,7 @@ assert !withPasswordQuality;
 let
   wantCurl = withRemote || withImportd;
   wantGcrypt = withResolved || withImportd;
-  version = "254";
+  version = "254.3";
 
   # Bump this variable on every (major) version change. See below (in the meson options list) for why.
   # command:
@@ -173,7 +173,7 @@ stdenv.mkDerivation (finalAttrs: {
   src = fetchFromGitHub {
     owner = "systemd";
     repo = "systemd";
-    rev = "v254";
+    rev = "v${version}";
     hash = "sha256-Im+sUChxaZZ8gm9itsU+hUlVbqUqIeuWuuJDr9pHvPU=";
   };
 
@@ -201,9 +201,6 @@ stdenv.mkDerivation (finalAttrs: {
     ./0016-inherit-systemd-environment-when-calling-generators.patch
     ./0017-core-don-t-taint-on-unmerged-usr.patch
     ./0018-tpm2_context_init-fix-driver-name-checking.patch
-    # Remove when https://github.com/systemd/systemd/pull/28784 lands
-    # as a point release.
-    ./0019-units-introduce-systemd-tmpfiles-setup-dev-early.ser.patch
   ] ++ lib.optional stdenv.hostPlatform.isMusl (
     let
       oe-core = fetchzip {
@@ -246,11 +243,6 @@ stdenv.mkDerivation (finalAttrs: {
       --replace \
       "'readelf'" \
       "'${targetPackages.stdenv.cc.bintools.targetPrefix}readelf'"
-    # The objcopy dependency is removed in v254
-    substituteInPlace src/ukify/ukify.py \
-      --replace \
-      "'objcopy'" \
-      "'${targetPackages.stdenv.cc.bintools.targetPrefix}objcopy'"
   '' + (
     let
       # The following patches references to dynamic libraries to ensure that
