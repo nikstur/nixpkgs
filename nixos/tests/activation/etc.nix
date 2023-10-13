@@ -5,6 +5,7 @@
   meta.maintainers = with lib.maintainers; [ nikstur ];
 
   nodes.machine = {
+    system.rebuildable = false;
     boot.initrd.systemd.enable = true;
   };
 

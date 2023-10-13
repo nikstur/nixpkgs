@@ -22,28 +22,30 @@ let
     chmod u+x $out/activate $out/dry-activate
     unset activationScript dryActivationScript
 
-    mkdir $out/bin
-    substitute ${./switch-to-configuration.pl} $out/bin/switch-to-configuration \
-      --subst-var out \
-      --subst-var-by toplevel ''${!toplevelVar} \
-      --subst-var-by coreutils "${pkgs.coreutils}" \
-      --subst-var-by distroId ${lib.escapeShellArg config.system.nixos.distroId} \
-      --subst-var-by installBootLoader ${lib.escapeShellArg config.system.build.installBootLoader} \
-      --subst-var-by localeArchive "${config.i18n.glibcLocales}/lib/locale/locale-archive" \
-      --subst-var-by perl "${perlWrapped}" \
-      --subst-var-by shell "${pkgs.bash}/bin/sh" \
-      --subst-var-by su "${pkgs.shadow.su}/bin/su" \
-      --subst-var-by systemd "${config.systemd.package}" \
-      --subst-var-by utillinux "${pkgs.util-linux}" \
-      ;
+    ${lib.optionalString config.system.rebuildable ''
+      mkdir $out/bin
+      substitute ${./switch-to-configuration.pl} $out/bin/switch-to-configuration \
+        --subst-var out \
+        --subst-var-by toplevel ''${!toplevelVar} \
+        --subst-var-by coreutils "${pkgs.coreutils}" \
+        --subst-var-by distroId ${lib.escapeShellArg config.system.nixos.distroId} \
+        --subst-var-by installBootLoader ${lib.escapeShellArg config.system.build.installBootLoader} \
+        --subst-var-by localeArchive "${config.i18n.glibcLocales}/lib/locale/locale-archive" \
+        --subst-var-by perl "${perlWrapped}" \
+        --subst-var-by shell "${pkgs.bash}/bin/sh" \
+        --subst-var-by su "${pkgs.shadow.su}/bin/su" \
+        --subst-var-by systemd "${config.systemd.package}" \
+        --subst-var-by utillinux "${pkgs.util-linux}" \
+        ;
 
-    chmod +x $out/bin/switch-to-configuration
-    ${optionalString (pkgs.stdenv.hostPlatform == pkgs.stdenv.buildPlatform) ''
-      if ! output=$(${perlWrapped}/bin/perl -c $out/bin/switch-to-configuration 2>&1); then
-        echo "switch-to-configuration syntax is not valid:"
-        echo "$output"
-        exit 1
-      fi
+      chmod +x $out/bin/switch-to-configuration
+      ${optionalString (pkgs.stdenv.hostPlatform == pkgs.stdenv.buildPlatform) ''
+        if ! output=$(${perlWrapped}/bin/perl -c $out/bin/switch-to-configuration 2>&1); then
+          echo "switch-to-configuration syntax is not valid:"
+          echo "$output"
+          exit 1
+        fi
+      ''}
     ''}
   '';
 
@@ -58,6 +60,13 @@ in
 
         The default, to have the script available all the time, is what we normally
         do, but for image based systems, this may not be needed or not be desirable.
+      '';
+    };
+    system.rebuildable = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = lib.mdDoc ''
+
       '';
     };
     system.build.separateActivationScript = mkOption {
