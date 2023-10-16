@@ -124,7 +124,7 @@
 , withRemote ? !stdenv.hostPlatform.isMusl
 , withResolved ? true
 , withShellCompletions ? true
-, withSysusers ? false # conflicts with the NixOS user management
+, withSysusers ? true
 , withSysupdate ? true
 , withTimedated ? true
 , withTimesyncd ? true
@@ -481,7 +481,6 @@ stdenv.mkDerivation (finalAttrs: {
     "-Dportabled=${lib.boolToString withPortabled}"
     "-Dhwdb=${lib.boolToString withHwdb}"
     "-Dremote=${lib.boolToString withRemote}"
-    "-Dsysusers=false"
     "-Dtimedated=${lib.boolToString withTimedated}"
     "-Dtimesyncd=${lib.boolToString withTimesyncd}"
     "-Duserdb=${lib.boolToString withUserDb}"
@@ -756,7 +755,7 @@ stdenv.mkDerivation (finalAttrs: {
     # runtime; otherwise we can't and we need to reboot.
     interfaceVersion = 2;
 
-    inherit withCryptsetup withHostnamed withImportd withKmod withLocaled withMachined withPortabled withTimedated withUtmp util-linux kmod kbd;
+    inherit withCryptsetup withHostnamed withImportd withKmod withLocaled withMachined withPortabled withTimedated withUtmp withSysusers util-linux kmod kbd;
 
     tests = {
       inherit (nixosTests) switchTest;
