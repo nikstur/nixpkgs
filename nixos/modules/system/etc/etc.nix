@@ -31,8 +31,14 @@ let
 
         mkdir -p "$out/etc/$(dirname "$target")"
         if ! [ -e "$out/etc/$target" ]; then
-          ln -s "$src" "$out/etc/$target"
+          if [ "$mode" = symlink ]; then
+            ln -s "$src" "$out/etc/$target"
+          else
+            # XXX Is this ok in the scripted stage 1?
+            cp "$src" "$out/etc/$target"
+          fi
         else
+          # XXX This is broken when we've copied files above.
           echo "duplicate entry $target -> $src"
           if [ "$(readlink "$out/etc/$target")" != "$src" ]; then
             echo "mismatched duplicate entry $(readlink "$out/etc/$target") <-> $src"
@@ -42,6 +48,8 @@ let
           fi
         fi
 
+        # TODO We can probably remove this alltogether, because
+        # tmpfile.rules will work for systemd and scripted initrd.
         if [ "$mode" != symlink ]; then
           echo "$mode" > "$out/etc/$target.mode"
           echo "$user" > "$out/etc/$target.uid"
@@ -196,6 +204,13 @@ in
         echo "setting up /etc..."
         ${pkgs.perl.withPackages (p: [ p.FileSlurp ])}/bin/perl ${./setup-etc.pl} ${etc}/etc
       '';
+
+    # Fix permissions in /etc.
+    systemd.tmpfiles.rules = let
+      stripPlus = lib.strings.removePrefix "+";
+    in lib.mapAttrsToList
+      (file: attrs: "z /etc/${attrs.target} ${attrs.mode} ${stripPlus attrs.user} ${stripPlus attrs.group}")
+      (lib.filterAttrs (name: attrs: attrs.enable && attrs.mode != "symlink") config.environment.etc);
   };
 
 }
