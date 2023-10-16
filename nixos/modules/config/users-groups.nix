@@ -496,6 +496,31 @@ let
     in
       filter types.shellPackage.check shells;
 
+  sysusersConfig = pkgs.writeTextDir "nixos.conf" ''
+    # Type Name ID GECOS Home directory Shell
+
+    # Users
+    ${lib.concatLines (lib.mapAttrsToList
+      (username: opts:
+        let
+          uid = if opts.uid == null then "-" else toString opts.uid;
+        in
+          ''u ${username} ${uid}:${opts.group} "${opts.description}" ${opts.home} ${opts.shell}''
+      )
+      cfg.users)
+    }
+
+    # Groups
+    ${lib.concatLines (lib.mapAttrsToList
+      (groupname: opts: ''g ${groupname} ${if opts.gid == null then "-" else toString opts.gid}'') cfg.groups)
+    }
+
+    # Group membership
+    ${lib.concatStrings (lib.mapAttrsToList
+      (groupname: opts: (lib.concatMapStrings (username: "m ${username} ${groupname}\n")) opts.members ) cfg.groups)
+    }
+  '';
+
 in {
   imports = [
     (mkAliasOptionModuleMD [ "users" "extraUsers" ] [ "users" "users" ])
@@ -677,7 +702,7 @@ in {
       shadow.gid = ids.gids.shadow;
     };
 
-    system.activationScripts.users = {
+    system.activationScripts.users = if config.boot.initrd.systemd.enable then {
       supportsDryActivation = true;
       text = ''
         install -m 0700 -d /root
@@ -686,7 +711,7 @@ in {
         ${pkgs.perl.withPackages (p: [ p.FileSlurp p.JSON ])}/bin/perl \
         -w ${./update-users-groups.pl} ${spec}
       '';
-    };
+    } else stringAfter [ "users" ] "";
 
     system.activationScripts.update-lingering = let
       lingerDir = "/var/lib/systemd/linger";
@@ -726,18 +751,42 @@ in {
     # for backwards compatibility
     system.activationScripts.groups = stringAfter [ "users" ] "";
 
+    system.build."sysusersConfig" = sysusersConfig;
+
     # Install all the user shells
     environment.systemPackages = systemShells;
 
-    environment.etc = mapAttrs' (_: { packages, name, ... }: {
-      name = "profiles/per-user/${name}";
-      value.source = pkgs.buildEnv {
-        name = "user-environment";
-        paths = packages;
-        inherit (config.environment) pathsToLink extraOutputsToInstall;
-        inherit (config.system.path) ignoreCollisions postBuild;
-      };
-    }) (filterAttrs (_: u: u.packages != []) cfg.users);
+    environment.etc = lib.mkMerge [
+      { "sysusers.d".source = sysusersConfig; }
+
+      (mapAttrs' (_: { packages, name, ... }: {
+        name = "profiles/per-user/${name}";
+        value.source = pkgs.buildEnv {
+            name = "user-environment";
+            paths = packages;
+            inherit (config.environment) pathsToLink extraOutputsToInstall;
+            inherit (config.system.path) ignoreCollisions postBuild;
+          };
+      }) (filterAttrs (_: u: u.packages != []) cfg.users))
+    ];
+
+    systemd.services."systemd-sysusers".serviceConfig = {
+      LoadCredential = lib.mapAttrsToList
+        (username: opts: "passwd.hashed-password.${username}:${opts.hashedPasswordFile}")
+        (lib.filterAttrs (_username: opts: opts.hashedPasswordFile != null) cfg.users);
+      SetCredential = (lib.mapAttrsToList
+        (username: opts: "passwd.hashed-password.${username}:${opts.initialHashedPassword}")
+        (lib.filterAttrs (_username: opts: opts.initialHashedPassword != null) cfg.users))
+        ++
+        (lib.mapAttrsToList
+          (username: opts: "passwd.plaintext-password.${username}:${opts.initialPassword}")
+          (lib.filterAttrs (_username: opts: opts.initialPassword != null) cfg.users))
+        ;
+    };
+
+    systemd.tmpfiles.rules = lib.mapAttrsToList
+      (username: opts: "d ${opts.home} ${opts.homeMode} ${username} ${opts.group} -")
+      cfg.users;
 
     environment.profiles = [
       "$HOME/.nix-profile"
