@@ -20,6 +20,8 @@ in
     (lib.mkIf config.boot.initrd.systemd.enable {
       system.activationScripts.etc = "";
 
+      boot.initrd.availableKernelModules = [ "overlay" ];
+
       boot.initrd.systemd = {
         mounts = [{
           where = "/sysroot/etc";
