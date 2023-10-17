@@ -235,23 +235,17 @@ in
     system.activationScripts.stdio = ""; # obsolete
     system.activationScripts.var = ""; # obsolete
     system.activationScripts.specialfs = ""; # obsolete
+    system.activationScripts.usrbinenv = ""; # obsolete
 
     systemd.tmpfiles.rules = [
       "D /var/empty 0555 root root -"
       "h /var/empty - - - - +i"
+    ] ++ lib.optionals (config.environment.usrbinenv != null) [
+      "d /usr/bin 0755 -"
+      "L+ /usr/bin/env - - - - ${config.environment.usrbinenv}"
+    ] ++ lib.optionals (config.environment.usrbinenv == null) [
+      "R /usr -"
     ];
-
-    system.activationScripts.usrbinenv = if config.environment.usrbinenv != null
-      then ''
-        mkdir -p /usr/bin
-        chmod 0755 /usr/bin
-        ln -sfn ${config.environment.usrbinenv} /usr/bin/.env.tmp
-        mv /usr/bin/.env.tmp /usr/bin/env # atomically replace /usr/bin/env
-      ''
-      else ''
-        rm -f /usr/bin/env
-        rmdir --ignore-fail-on-non-empty /usr/bin /usr
-      '';
 
     systemd.user = {
       services.nixos-activation = {
