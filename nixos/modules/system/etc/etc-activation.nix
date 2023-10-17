@@ -18,6 +18,8 @@ in
     })
 
     (lib.mkIf config.boot.initrd.systemd.enable {
+      system.activationScripts.etc = "";
+
       boot.initrd.systemd = {
         mounts = [{
           where = "/sysroot/etc";
