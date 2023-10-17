@@ -756,7 +756,7 @@ in {
     '';
 
     # Warn about user accounts with deprecated password hashing schemes
-    system.activationScripts.hashes = {
+    system.activationScripts.hashes = if !config.boot.initrd.systemd.enable then {
       deps = [ "users" ];
       text = ''
         users=()
@@ -774,7 +774,7 @@ in {
           printf ' - %s\n' "''${users[@]}"
         fi
       '';
-    };
+    } else "";
 
     # for backwards compatibility
     system.activationScripts.groups = stringAfter [ "users" ] "";
