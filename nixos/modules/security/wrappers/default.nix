@@ -275,10 +275,12 @@ in
       mrpx ${wrap.source},
     '') wrappers;
 
-    ###### wrappers activation script
-    system.activationScripts.wrappers =
-      lib.stringAfter [ "specialfs" "users" ]
-        ''
+    systemd.services.suid-guid-wrappers = {
+      wantedBy = [ "sysinit.target" ];
+      after = [ "local-fs.target" ];
+
+      serviceConfig = let
+        wrapperScript = pkgs.writeShellScript "wrappers.sh" ''
           chmod 755 "${parentWrapperDir}"
 
           # We want to place the tmpdirs for the wrappers to the parent dir.
@@ -302,6 +304,11 @@ in
             ln --symbolic "$wrapperDir" "${wrapperDir}"
           fi
         '';
+      in {
+        Type = "oneshot";
+        ExecStart = "${wrapperScript}";
+      };
+    };
 
     ###### wrappers consistency checks
     system.checks = lib.singleton (pkgs.runCommandLocal
