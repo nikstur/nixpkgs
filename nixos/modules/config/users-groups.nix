@@ -496,7 +496,9 @@ let
     in
       filter types.shellPackage.check shells;
 
-  sysusersConfig = pkgs.writeTextDir "nixos.conf" ''
+  # Make sure this is ordered last. That's why there is a "z" in the filename.
+  # Explicit module options should override package settings.
+  sysusersConfig = pkgs.writeTextDir "z-nixos.conf" ''
     # Type Name ID GECOS Home directory Shell
 
     # Users
@@ -505,7 +507,7 @@ let
         let
           uid = if opts.uid == null then "-" else toString opts.uid;
         in
-          ''u ${username} ${uid}:${opts.group} "${opts.description}" ${opts.home} ${opts.shell}''
+          ''u ${username} ${uid}:${opts.group} "${opts.description}" ${opts.home} ${utils.toShellPath opts.shell}''
       )
       cfg.users)
     }
@@ -519,6 +521,32 @@ let
     ${lib.concatStrings (lib.mapAttrsToList
       (groupname: opts: (lib.concatMapStrings (username: "m ${username} ${groupname}\n")) opts.members ) cfg.groups)
     }
+  '';
+
+  staticSysusersCredentials = pkgs.runCommand "static-sysusers-credentials" { } ''
+    mkdir $out; cd $out
+    ${lib.concatLines (
+      lib.mapAttrsToList
+        (username: opts: "cat '${opts.hashedPasswordFile}' > 'passwd.hashed-password.${username}'")
+        (lib.filterAttrs (_username: opts: opts.hashedPasswordFile != null) cfg.users)
+        ++
+      (lib.mapAttrsToList
+        (username: opts: "echo -n '${opts.initialHashedPassword}' > 'passwd.hashed-password.${username}'")
+        (lib.filterAttrs (_username: opts: opts.initialHashedPassword != null) cfg.users))
+        ++
+      (lib.mapAttrsToList
+        (username: opts: "echo -n '${opts.initialPassword}' > 'passwd.plaintext-password.${username}'")
+        (lib.filterAttrs (_username: opts: opts.initialPassword != null) cfg.users))
+      )
+    }
+  '';
+
+  staticSysusers = pkgs.runCommand "static-sysusers" {
+      nativeBuildInputs = [ pkgs.systemd ];
+    } ''
+    mkdir $out
+    export CREDENTIALS_DIRECTORY=${staticSysusersCredentials}
+    systemd-sysusers --root $out ${sysusersConfig}/z-nixos.conf
   '';
 
 in {
@@ -751,13 +779,22 @@ in {
     # for backwards compatibility
     system.activationScripts.groups = stringAfter [ "users" ] "";
 
-    system.build."sysusersConfig" = sysusersConfig;
-
+    systemd.sysusers.enable = cfg.mutableUsers;
+    
     # Install all the user shells
     environment.systemPackages = systemShells;
 
     environment.etc = lib.mkMerge [
-      { "sysusers.d".source = sysusersConfig; }
+      (lib.mkIf (config.boot.initrd.systemd.enable && !cfg.mutableUsers) {
+        "group".source = "${staticSysusers}/etc/group";
+        "gshadow".source = "${staticSysusers}/etc/gshadow";
+        "passwd".source = "${staticSysusers}/etc/passwd";
+        "shadow".source = "${staticSysusers}/etc/shadow";
+      })
+
+      (lib.mkIf (config.boot.initrd.systemd.enable && cfg.mutableUsers) {
+        "sysusers.d".source = sysusersConfig;
+      })
 
       (mapAttrs' (_: { packages, name, ... }: {
         name = "profiles/per-user/${name}";
@@ -770,18 +807,20 @@ in {
       }) (filterAttrs (_: u: u.packages != []) cfg.users))
     ];
 
-    systemd.services."systemd-sysusers".serviceConfig = {
-      LoadCredential = lib.mapAttrsToList
-        (username: opts: "passwd.hashed-password.${username}:${opts.hashedPasswordFile}")
-        (lib.filterAttrs (_username: opts: opts.hashedPasswordFile != null) cfg.users);
-      SetCredential = (lib.mapAttrsToList
-        (username: opts: "passwd.hashed-password.${username}:${opts.initialHashedPassword}")
-        (lib.filterAttrs (_username: opts: opts.initialHashedPassword != null) cfg.users))
-        ++
-        (lib.mapAttrsToList
-          (username: opts: "passwd.plaintext-password.${username}:${opts.initialPassword}")
-          (lib.filterAttrs (_username: opts: opts.initialPassword != null) cfg.users))
-        ;
+    systemd.services = lib.mkIf cfg.mutableUsers {
+      "systemd-sysusers".serviceConfig = {
+        LoadCredential = lib.mapAttrsToList
+          (username: opts: "passwd.hashed-password.${username}:${opts.hashedPasswordFile}")
+          (lib.filterAttrs (_username: opts: opts.hashedPasswordFile != null) cfg.users);
+        SetCredential = (lib.mapAttrsToList
+          (username: opts: "passwd.hashed-password.${username}:${opts.initialHashedPassword}")
+          (lib.filterAttrs (_username: opts: opts.initialHashedPassword != null) cfg.users))
+          ++
+          (lib.mapAttrsToList
+            (username: opts: "passwd.plaintext-password.${username}:${opts.initialPassword}")
+            (lib.filterAttrs (_username: opts: opts.initialPassword != null) cfg.users))
+          ;
+        };
     };
 
     systemd.tmpfiles.rules = lib.mapAttrsToList

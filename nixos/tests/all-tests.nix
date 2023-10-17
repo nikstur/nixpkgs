@@ -265,7 +265,8 @@ in {
   etc = pkgs.callPackage ../modules/system/etc/test.nix { inherit evalMinimalConfig; };
   activation = pkgs.callPackage ../modules/system/activation/test.nix { };
   activation-etc = runTest ./activation/etc.nix;
-  activation-users-groups = runTest ./activation/users-groups.nix;
+  activation-mutable-users-groups = runTest ./activation/mutable-users-groups.nix;
+  activation-immutable-users-groups = runTest ./activation/immutable-users-groups.nix;
   etcd = handleTestOn ["x86_64-linux"] ./etcd.nix {};
   etcd-cluster = handleTestOn ["x86_64-linux"] ./etcd-cluster.nix {};
   etebase-server = handleTest ./etebase-server.nix {};
