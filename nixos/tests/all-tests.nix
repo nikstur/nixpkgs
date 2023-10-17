@@ -269,6 +269,7 @@ in {
   activation-immutable-users-groups = runTest ./activation/immutable-users-groups.nix;
   activation-perlless = runTest ./activation/perlless.nix;
   activation-var = runTest ./activation/var.nix;
+  activation-usrbinenv = runTest ./activation/usrbinenv.nix;
   etcd = handleTestOn ["x86_64-linux"] ./etcd.nix {};
   etcd-cluster = handleTestOn ["x86_64-linux"] ./etcd-cluster.nix {};
   etebase-server = handleTest ./etebase-server.nix {};
