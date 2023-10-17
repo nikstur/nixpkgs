@@ -161,8 +161,6 @@ let
     ] ++ [
       "systemd-exit.service"
       "systemd-update-done.service"
-    ] ++ optionals cfg.package.withSysusers [
-      "systemd-sysusers.service"
     ] ++ cfg.additionalUpstreamSystemUnits;
 
   upstreamSystemWants =
