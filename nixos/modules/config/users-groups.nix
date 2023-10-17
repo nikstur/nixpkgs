@@ -730,7 +730,7 @@ in {
       shadow.gid = ids.gids.shadow;
     };
 
-    system.activationScripts.users = if config.boot.initrd.systemd.enable then {
+    system.activationScripts.users = if !config.boot.initrd.systemd.enable then {
       supportsDryActivation = true;
       text = ''
         install -m 0700 -d /root
