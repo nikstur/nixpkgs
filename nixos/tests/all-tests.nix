@@ -270,6 +270,7 @@ in {
   activation-perlless = runTest ./activation/perlless.nix;
   activation-var = runTest ./activation/var.nix;
   activation-usrbinenv = runTest ./activation/usrbinenv.nix;
+  activation-binsh = runTest ./activation/binsh.nix;
   etcd = handleTestOn ["x86_64-linux"] ./etcd.nix {};
   etcd-cluster = handleTestOn ["x86_64-linux"] ./etcd-cluster.nix {};
   etebase-server = handleTest ./etebase-server.nix {};

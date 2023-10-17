@@ -210,14 +210,10 @@ in
         ''}
       '';
 
-    system.activationScripts.binsh = stringAfter [ "stdio" ]
-      ''
-        # Create the required /bin/sh symlink; otherwise lots of things
-        # (notably the system() function) won't work.
-        mkdir -m 0755 -p /bin
-        ln -sfn "${cfg.binsh}" /bin/.sh.tmp
-        mv /bin/.sh.tmp /bin/sh # atomically replace /bin/sh
-      '';
+    systemd.tmpfiles.rules = [
+      "d /bin 0755 -"
+      "L+ /bin/sh - - - - ${cfg.binsh}"
+    ];
 
   };
 
