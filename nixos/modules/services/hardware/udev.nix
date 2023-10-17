@@ -418,18 +418,9 @@ in
     # We don't place this into `extraModprobeConfig` so that stage-1 ramdisk doesn't bloat.
     environment.etc."modprobe.d/firmware.conf".text = "options firmware_class path=${config.hardware.firmware}/lib/firmware";
 
-    system.activationScripts.udevd =
-      ''
-        # The deprecated hotplug uevent helper is not used anymore
-        if [ -e /proc/sys/kernel/hotplug ]; then
-          echo "" > /proc/sys/kernel/hotplug
-        fi
-
-        # Allow the kernel to find our firmware.
-        if [ -e /sys/module/firmware_class/parameters/path ]; then
-          echo -n "${config.hardware.firmware}/lib/firmware" > /sys/module/firmware_class/parameters/path
-        fi
-      '';
+    systemd.tmpfiles.rules = [
+      "w /sys/module/firmware_class/parameters/path - - - - '${config.hardware.firmware}/lib/firmware'"
+    ];
 
     systemd.services.systemd-udevd =
       { restartTriggers = cfg.packages;
