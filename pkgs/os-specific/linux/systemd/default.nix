@@ -716,6 +716,9 @@ stdenv.mkDerivation (finalAttrs: {
     rm -rf $out/share/doc
   '' + lib.optionalString withKmod ''
     mv $out/lib/modules-load.d $out/example
+  '' + lib.optionalString withSysusers ''
+    # We do not use the sysusers.d definition files
+    rm -rf $out/lib/sysusers.d
   '';
 
   # Avoid *.EFI binary stripping. At least on aarch64-linux strip
