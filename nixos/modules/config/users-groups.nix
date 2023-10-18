@@ -823,9 +823,11 @@ in {
         };
     };
 
+    # Create home directories, do not create /var/empty even if that's a user's
+    # home.
     systemd.tmpfiles.rules = lib.mapAttrsToList
       (username: opts: "d ${opts.home} ${opts.homeMode} ${username} ${opts.group} -")
-      cfg.users;
+      (lib.filterAttrs (_username: opts: opts.home != "/var/empty") cfg.users);
 
     environment.profiles = [
       "$HOME/.nix-profile"
