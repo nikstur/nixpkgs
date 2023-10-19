@@ -1406,28 +1406,6 @@ in
           val = tempaddrValues.${opt}.sysctl;
          in nameValuePair "net.ipv6.conf.${replaceStrings ["."] ["/"] i.name}.use_tempaddr" val));
 
-    security.wrappers = {
-      ping = {
-        owner = "root";
-        group = "root";
-        capabilities = "cap_net_raw+p";
-        source = "${pkgs.iputils.out}/bin/ping";
-      };
-    };
-    security.apparmor.policies."bin.ping".profile = lib.mkIf config.security.apparmor.policies."bin.ping".enable (lib.mkAfter ''
-      /run/wrappers/bin/ping {
-        include <abstractions/base>
-        include <nixos/security.wrappers/ping>
-        rpx /run/wrappers/wrappers.*/ping,
-      }
-      /run/wrappers/wrappers.*/ping {
-        include <abstractions/base>
-        include <nixos/security.wrappers/ping>
-        capability net_raw,
-        capability setpcap,
-      }
-    '');
-
     # Set the domain name in the activation script
     system.activationScripts.domain =
       optionalString (cfg.domain != null) ''

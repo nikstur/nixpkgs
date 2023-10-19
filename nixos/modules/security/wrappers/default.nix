@@ -275,9 +275,10 @@ in
       mrpx ${wrap.source},
     '') wrappers;
 
-    systemd.services.suid-guid-wrappers = {
+    systemd.services.suid-sgid-wrappers = {
+      description = "Create SUID/SGID Wrappers";
       wantedBy = [ "sysinit.target" ];
-      after = [ "local-fs.target" ];
+      after = [ "run-wrappers.mount" ];
 
       serviceConfig = let
         wrapperScript = pkgs.writeShellScript "wrappers.sh" ''
