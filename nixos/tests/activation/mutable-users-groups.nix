@@ -28,7 +28,12 @@ in
     assert "SetCredential=passwd.hashed-password.root:${rootPassword}" in sysusers_service
     assert "SetCredential=passwd.plaintext-password.normalo:${normaloPassword}" in sysusers_service
 
-    # Check that home diretoy is created and owned by the user
-    print(machine.succeed("stat -c '%U' /home/normalo"))
+    # Check that home directory is created and owned by the user
+    assert machine.succeed("stat -c '%U' /home/normalo") == "normalo\n"
+
+    assert machine.succeed("stat -c '%a' /etc/passwd") == "644\n"
+    assert machine.succeed("stat -c '%a' /etc/group") == "644\n"
+    assert machine.succeed("stat -c '%a' /etc/shadow") == "0\n"
+    assert machine.succeed("stat -c '%a' /etc/gshadow") == "0\n"
   '';
 }

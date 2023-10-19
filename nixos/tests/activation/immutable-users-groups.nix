@@ -27,7 +27,12 @@ in
     machine.fail("ls /etc/sysusers.d")
     print(machine.succeed("getent passwd normalo"))
 
-    # Check that home diretoy is created and owned by the user
-    print(machine.succeed("stat -c '%U' /home/normalo"))
+    # Check that home directory is created and owned by the user
+    assert machine.succeed("stat -c '%U' /home/normalo") == "normalo\n"
+
+    assert machine.succeed("stat -c '%a' /etc/passwd") == "644\n"
+    assert machine.succeed("stat -c '%a' /etc/group") == "644\n"
+    assert machine.succeed("stat -c '%a' /etc/shadow") == "0\n"
+    assert machine.succeed("stat -c '%a' /etc/gshadow") == "0\n"
   '';
 }

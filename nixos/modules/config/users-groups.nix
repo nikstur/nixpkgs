@@ -786,10 +786,22 @@ in {
 
     environment.etc = lib.mkMerge [
       (lib.mkIf (config.boot.initrd.systemd.enable && !cfg.mutableUsers) {
-        "group".source = "${staticSysusers}/etc/group";
-        "gshadow".source = "${staticSysusers}/etc/gshadow";
-        "passwd".source = "${staticSysusers}/etc/passwd";
-        "shadow".source = "${staticSysusers}/etc/shadow";
+        "passwd" = {
+          source = "${staticSysusers}/etc/passwd";
+          mode = "0644";
+        };
+        "group" = {
+          source = "${staticSysusers}/etc/group";
+          mode = "0644";
+        };
+        "shadow" = {
+          source = "${staticSysusers}/etc/shadow";
+          mode = "0000";
+        };
+        "gshadow" = {
+          source = "${staticSysusers}/etc/gshadow";
+          mode = "0000";
+        };
       })
 
       (lib.mkIf (config.boot.initrd.systemd.enable && cfg.mutableUsers) {
