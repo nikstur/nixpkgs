@@ -496,9 +496,7 @@ let
     in
       filter types.shellPackage.check shells;
 
-  # Make sure this is ordered last. That's why there is a "z" in the filename.
-  # Explicit module options should override package settings.
-  sysusersConfig = pkgs.writeTextDir "z-nixos.conf" ''
+  sysusersConfig = pkgs.writeTextDir "00-nixos.conf" ''
     # Type Name ID GECOS Home directory Shell
 
     # Users
@@ -546,7 +544,7 @@ let
     } ''
     mkdir $out
     export CREDENTIALS_DIRECTORY=${staticSysusersCredentials}
-    systemd-sysusers --root $out ${sysusersConfig}/z-nixos.conf
+    systemd-sysusers --root $out ${sysusersConfig}/00-nixos.conf
   '';
 
 in {
