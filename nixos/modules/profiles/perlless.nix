@@ -14,4 +14,6 @@
   environment.defaultPackages = [ ];
   documentation.info.enable = false;
 
+  system.forbiddenDependenciesRegex = "perl";
+
 }
