@@ -278,7 +278,9 @@ in
     systemd.services.suid-sgid-wrappers = {
       description = "Create SUID/SGID Wrappers";
       wantedBy = [ "sysinit.target" ];
-      after = [ "run-wrappers.mount" ];
+      before = [ "sysinit.target" ];
+      unitConfig.DefaultDependencies = false;
+      unitConfig.RequiresMountsFor = [ "/nix/store" "/run/wrappers" ];
 
       serviceConfig = let
         wrapperScript = pkgs.writeShellScript "wrappers.sh" ''
