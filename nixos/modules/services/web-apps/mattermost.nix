@@ -285,12 +285,6 @@ in
 
       services.postgresql.enable = cfg.localDatabaseCreate;
 
-      # The systemd service will fail to execute the preStart hook
-      # if the WorkingDirectory does not exist
-      system.activationScripts.mattermost = ''
-        mkdir -p "${cfg.statePath}"
-      '';
-
       systemd.services.mattermost = {
         description = "Mattermost chat service";
         wantedBy = [ "multi-user.target" ];
