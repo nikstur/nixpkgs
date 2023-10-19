@@ -47,7 +47,7 @@ stdenv.mkDerivation (finalAttrs: {
     (lib.enableFeature true "valgrind-test")
   ];
 
-  nativeBuildInputs = [ autoreconfHook pandoc pkg-config ];
+  nativeBuildInputs = [ autoreconfHook pkg-config ];
   buildInputs = [ openssl ]
     ++ lib.optional fuseSupport fuse3
     ++ lib.optional yajlSupport yajl
