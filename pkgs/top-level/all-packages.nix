@@ -28720,6 +28720,7 @@ with pkgs;
     withHomed = false;
     withHwdb = false;
     withImportd = false;
+    withIptables = false;
     withLibBPF = false;
     withLibidn2 = false;
     withLocaled = false;
@@ -28743,6 +28744,9 @@ with pkgs;
     withUserDb = false;
     withUkify = false;
     withBootloader = false;
+    withPasswordQuality = false;
+    withVmspawn = false;
+    withQrencode = false;
   };
   systemdLibs = systemdMinimal.override {
     pname = "systemd-minimal-libs";
