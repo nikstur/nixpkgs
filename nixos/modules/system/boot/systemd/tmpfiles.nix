@@ -150,6 +150,14 @@ in
       "systemd-tmpfiles-setup.service"
     ];
 
+    # Allow systemd-tmpfiles to be restarted by switch-to-configuration.
+    systemd.services."systemd-tmpfiles-setup" = {
+      unitConfig.RefuseManualStop = false;
+      requiredBy = [ "sysinit-reactivation.target" ];
+      before = [ "sysinit-reactivation.target" ];
+      restartTriggers = [ config.environment.etc."tmpfiles.d".source ];
+    };
+
     environment.etc = {
       "tmpfiles.d".source = (pkgs.symlinkJoin {
         name = "tmpfiles.d";
