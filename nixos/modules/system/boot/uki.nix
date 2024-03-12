@@ -87,7 +87,12 @@ in
       in
       name + versionInfix + triesInfix + ".efi";
 
-    system.build.uki = pkgs.runCommand config.system.boot.loader.ukiFile { } ''
+    system.build = { inherit ukifyConfig; };
+
+    system.build.uki = pkgs.runCommand config.system.boot.loader.ukiFile
+      {
+        passthru.config = ukifyConfig;
+      } ''
       mkdir -p $out
       ${pkgs.buildPackages.systemdUkify}/lib/systemd/ukify build \
         --config=${ukifyConfig} \
