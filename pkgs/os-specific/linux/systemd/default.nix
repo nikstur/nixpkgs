@@ -104,6 +104,7 @@
 , withCryptsetup ? true
 , withRepart ? true
 , withDocumentation ? true
+, withDebugShell ? true
 , withEfi ? stdenv.hostPlatform.isEfi
 , withFido2 ? true
   # conflicts with the NixOS /etc management
@@ -342,7 +343,6 @@ stdenv.mkDerivation (finalAttrs: {
       libcap
       libuuid
       linuxHeaders
-      bashInteractive # for patch shebangs
     ]
 
     ++ lib.optionals wantGcrypt [ libgcrypt libgpg-error ]
@@ -393,7 +393,6 @@ stdenv.mkDerivation (finalAttrs: {
     (lib.mesonOption "version-tag" version)
     (lib.mesonOption "mode" "release")
     (lib.mesonOption "tty-gid" "3") # tty in NixOS has gid 3
-    (lib.mesonOption "debug-shell" "${bashInteractive}/bin/bash")
     (lib.mesonOption "pamconfdir" "${placeholder "out"}/etc/pam.d")
     (lib.mesonOption "kmod-path" "${kmod}/bin/kmod")
 
@@ -443,6 +442,10 @@ stdenv.mkDerivation (finalAttrs: {
     # Disabled for now until someone makes this work.
     (lib.mesonOption "sshconfdir" "no")
     (lib.mesonOption "sshdconfdir" "no")
+
+    # RPM
+    # This stops building/installing RPM specific tools.
+    (lib.mesonOption "rpmmacrosdir" "no")
 
 
     # Features
@@ -546,6 +549,8 @@ stdenv.mkDerivation (finalAttrs: {
   ] ++ lib.optionals stdenv.hostPlatform.isMusl [
     (lib.mesonBool "gshadow" false)
     (lib.mesonBool "idn" false)
+  ] ++ lib.optionals withDebugShell [
+    (lib.mesonOption "debug-shell" "${bashInteractive}/bin/bash")
   ];
   preConfigure =
     let

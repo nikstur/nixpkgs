@@ -27059,6 +27059,7 @@ with pkgs;
     withCryptsetup = false;
     withRepart = false;
     withDocumentation = false;
+    withDebugShell = false;
     withEfi = false;
     withFido2 = false;
     withHostnamed = false;
