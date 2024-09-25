@@ -63,7 +63,6 @@
 , withKexectools ? lib.meta.availableOn stdenv.hostPlatform kexec-tools
 , kexec-tools
 , bashInteractive
-, bash
 , libmicrohttpd
 , libfido2
 , p11-kit
@@ -325,7 +324,6 @@ stdenv.mkDerivation (finalAttrs: {
       docbook_xsl
       docbook_xml_dtd_42
       docbook_xml_dtd_45
-      bash
       (buildPackages.python3Packages.python.withPackages (ps: with ps; [ lxml jinja2 ] ++ lib.optional withEfi ps.pyelftools))
     ]
     ++ lib.optionals withLibBPF [
