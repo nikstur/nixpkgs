@@ -208,7 +208,8 @@ rec {
 
       ${busybox}/bin/mount -o remount,ro dummy /
 
-      ${busybox}/bin/poweroff -f
+      # ${busybox}/bin/poweroff -f
+      echo "o" > /proc/sysrq-trigger
     else
       export PATH=/bin:/usr/bin:${coreutils}/bin
       echo "Starting interactive shell..."
