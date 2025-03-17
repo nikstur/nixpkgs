@@ -1,0 +1,19 @@
+[package]
+name = "prepare-root"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+
+[profile.release]
+opt-level = "s"
+panic = "abort"
+lto = true
+strip = true
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+all = { level = "deny" }
+pedantic = { level = "deny" }
