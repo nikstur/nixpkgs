@@ -759,7 +759,7 @@ let
                 pkgs.bootspec
               ]
               ++ optionals clevisTest [ pkgs.klibc ]
-              ++ optional systemdStage1 pkgs.chroot-realpath;
+              ++ optional systemdStage1 pkgs.prepare-root;
 
             nix.settings = {
               substituters = mkForce [ ];

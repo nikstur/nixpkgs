@@ -547,7 +547,7 @@ in
           "${pkgs.glibc}/lib/libnss_files.so.2"
 
           # Resolving sysroot symlinks without code exec
-          "${pkgs.chroot-realpath}/bin/chroot-realpath"
+          "${pkgs.prepare-root}/bin/chroot-realpath"
         ]
         ++ jobScripts
         ++ map (c: builtins.removeAttrs c [ "text" ]) (builtins.attrValues cfg.contents);

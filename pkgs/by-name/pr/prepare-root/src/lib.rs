@@ -1,6 +1,11 @@
 mod config;
 
-use std::{fs, os::unix::fs::PermissionsExt, path::Path, process::Command};
+use std::{
+    fs,
+    os::unix::fs::{chroot, PermissionsExt},
+    path::{Path, PathBuf},
+    process::Command,
+};
 
 use anyhow::{Context, Result};
 use sysinfo::Disks;
@@ -170,4 +175,15 @@ fn atomic_symlink(original: impl AsRef<Path>, link: impl AsRef<Path>) -> Result<
         .with_context(|| format!("Failed to rename {tmp_path:?} to {:?}", link.as_ref()))?;
 
     Ok(())
+}
+
+/// Resolve a potential symlink at `path` with the given `prefix` as root directory
+pub fn resolve_in_chroot(prefix: impl AsRef<Path>, path: impl AsRef<Path>) -> Result<PathBuf> {
+    chroot(prefix).context("Failed to chroot into {prefix}")?;
+
+    std::env::set_current_dir("/").context("Failed to set CWD to /")?;
+
+    let res = std::fs::canonicalize(path).context("Failed to canonicalize {path}")?;
+
+    Ok(res)
 }

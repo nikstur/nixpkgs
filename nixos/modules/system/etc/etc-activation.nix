@@ -164,10 +164,10 @@
 
                   closure="$(realpath /nixos-closure)"
 
-                  metadata_image="$(${pkgs.chroot-realpath}/bin/chroot-realpath /sysroot "$closure/etc-metadata-image")"
+                  metadata_image="$(${pkgs.prepare-root}/bin/chroot-realpath /sysroot "$closure/etc-metadata-image")"
                   ln -s "/sysroot$metadata_image" /etc-metadata-image
 
-                  basedir="$(${pkgs.chroot-realpath}/bin/chroot-realpath /sysroot "$closure/etc-basedir")"
+                  basedir="$(${pkgs.prepare-root}/bin/chroot-realpath /sysroot "$closure/etc-basedir")"
                   ln -s "/sysroot$basedir" /etc-basedir
                 '';
             };
