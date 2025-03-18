@@ -607,7 +607,7 @@ in
         environment = {
           SH_BINARY = "${config.system.build.binsh}/bin/sh";
           FIRMWARE = "${config.hardware.firmware}/lib/firmware";
-          MODEPROBE_BINARY = "${pkgs.kmod}/bin/modprobe";
+          MODPROBE_BINARY = "${pkgs.kmod}/bin/modprobe";
         };
         serviceConfig = {
           RuntimeDirectory = "initrd-switch-root";
