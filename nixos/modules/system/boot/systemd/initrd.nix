@@ -612,6 +612,11 @@ in
         serviceConfig = {
           RuntimeDirectory = "initrd-switch-root";
           EnvironmentFile = "-/run/initrd-switch-root/switch-root.env";
+          BindPaths = [
+            "/dev:/sysroot/dev:rbind"
+            "/sys:/sysroot/sys:rbind"
+            "/proc:/sysroot/proc:rbind"
+          ];
           ExecStart = [
             ""
             "${pkgs.prepare-root}/bin/find-prepare-root"
