@@ -5,6 +5,8 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.97"
+log = "0.4.26"
+env_logger = { version = "0.11.7", default-features = false }
 sysinfo = { version = "0.32", default-features = false, features = [ "disk" ]}
 
 [profile.release]

@@ -9,30 +9,43 @@ use config::Config;
 
 const NIX_STORE_PATH: &str = "/nix/store";
 
-// Boot
-
-pub fn boot() -> Result<()> {
+/// Activate the system.
+pub fn init() -> Result<()> {
     let config = Config::from_env()?;
 
-    setup_nix_store_permissions()?;
+    log::info!("Setting up Nix Store permissions...");
+    setup_nix_store_permissions();
+
+    log::info!("Re-mounting Nix Store read-only...");
     remount_nix_store_read_only()?;
+
+    log::info!("Setting up /run/booted-system...");
     atomic_symlink(&config.toplevel, "/run/booted-system")?;
+
+    log::info!("Setting up modprobe...");
+    setup_modprobe(&config.modprobe_binary)?;
+
+    log::info!("Activating the system...");
     activate(&config)?;
 
     Ok(())
 }
 
-pub fn setup_nix_store_permissions() -> Result<()> {
+/// Set up the correct permissions for the Nix Store.
+///
+/// Gracefully fail if they cannot be changed to accomodate read-only filesystems.
+pub fn setup_nix_store_permissions() {
     const ROOT_UID: u32 = 0;
     const NIXBUILD_GID: u32 = 0;
+    const NIX_STORE_MODE: u32 = 0o1775;
 
     std::os::unix::fs::chown(NIX_STORE_PATH, Some(ROOT_UID), Some(NIXBUILD_GID)).ok();
-    fs::metadata(NIX_STORE_PATH).map(|metadata| {
-        let mut permissions = metadata.permissions();
-        permissions.set_mode(0o1775);
-    })?;
-
-    Ok(())
+    fs::metadata(NIX_STORE_PATH)
+        .map(|metadata| {
+            let mut permissions = metadata.permissions();
+            permissions.set_mode(NIX_STORE_MODE);
+        })
+        .ok();
 }
 
 /// Remount the Nix Store read only
@@ -72,17 +85,19 @@ fn mount(args: &[&str]) -> Result<()> {
     Ok(())
 }
 
-pub fn setup_run_booted_system(toplevel: impl AsRef<Path>) -> Result<()> {
-    atomic_symlink(toplevel, "/run/booted-system")
-}
-
-// Activation
-
+/// Activate the system.
+///
+/// This runs both during boot and durign re-activation during switch-to-configuration.
 fn activate(config: &Config) -> Result<()> {
+    log::info!("Setting up /bin/sh...");
     atomic_symlink(&config.sh_binary, "/bin/sh")?;
+
+    log::info!("Setting up /run/current-system...");
     atomic_symlink(&config.toplevel, "/run/current-system")?;
-    setup_modprobe(&config.modprobe_binary)?;
+
+    log::info!("Setting up firmware search paths...");
     setup_firmware_search_path(&config.firmware)?;
+
     Ok(())
 }
 
@@ -98,7 +113,7 @@ fn setup_modprobe(modprobe_binary: impl AsRef<Path>) -> Result<()> {
     )
     .with_context(|| {
         format!(
-            "Failed to populate firmware search path with {:?}",
+            "Failed to populate modprobe path with {:?}",
             modprobe_binary.as_ref()
         )
     })?;
