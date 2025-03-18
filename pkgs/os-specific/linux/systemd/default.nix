@@ -63,7 +63,6 @@
   libseccomp,
   withKexectools ? lib.meta.availableOn stdenv.hostPlatform kexec-tools,
   kexec-tools,
-  bashInteractive,
   bash,
   libmicrohttpd,
   libfido2,
@@ -383,7 +382,6 @@ stdenv.mkDerivation (finalAttrs: {
       libcap
       libuuid
       linuxHeaders
-      bashInteractive # for patch shebangs
     ]
 
     ++ lib.optionals withGcrypt [
@@ -499,6 +497,10 @@ stdenv.mkDerivation (finalAttrs: {
       # Disabled for now until someone makes this work.
       (lib.mesonOption "sshconfdir" "no")
       (lib.mesonOption "sshdconfdir" "no")
+
+      # RPM
+      # This stops building/installing RPM specific tools.
+      (lib.mesonOption "rpmmacrosdir" "no")
 
       # Features
 
