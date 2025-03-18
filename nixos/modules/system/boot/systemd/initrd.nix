@@ -548,7 +548,8 @@ in
 
           # Resolving sysroot symlinks without code exec
           "${pkgs.prepare-root}/bin/chroot-realpath"
-          "${pkgs.prepare-root}/bin/find-closure"
+          "${pkgs.prepare-root}/bin/prepare-root"
+          "${pkgs.prepare-root}/bin/find-etc"
         ]
         ++ jobScripts
         ++ map (c: builtins.removeAttrs c [ "text" ]) (builtins.attrValues cfg.contents);
@@ -580,27 +581,6 @@ in
           ) cfg.automounts
         );
 
-      services.initrd-find-nixos-closure = {
-        description = "Find NixOS closure";
-
-        unitConfig = {
-          RequiresMountsFor = "/sysroot/nix/store";
-          DefaultDependencies = false;
-        };
-        before = [
-          "initrd.target"
-          "shutdown.target"
-        ];
-        conflicts = [ "shutdown.target" ];
-        requiredBy = [ "initrd.target" ];
-        path = [ pkgs.prepare-root ];
-        serviceConfig = {
-          Type = "oneshot";
-          RemainAfterExit = true;
-          ExecStart = "${pkgs.prepare-root}/bin/find-closure";
-        };
-      };
-
       # We need to propagate /run for things like /run/booted-system
       # and /run/current-system.
       mounts = [
@@ -617,43 +597,26 @@ in
         }
       ];
 
-      services.initrd-nixos-activation = {
-        after = [ "initrd-switch-root.target" ];
-        requiredBy = [ "initrd-switch-root.service" ];
-        before = [ "initrd-switch-root.service" ];
-        unitConfig.DefaultDependencies = false;
-        unitConfig = {
-          AssertPathExists = "/etc/initrd-release";
-          RequiresMountsFor = [
-            "/sysroot/run"
-          ];
-        };
-        serviceConfig.Type = "oneshot";
-        description = "NixOS Activation";
-
-        script = # bash
-          ''
-            set -uo pipefail
-            export PATH="/bin:${cfg.package.util-linux}/bin"
-
-            closure="$(realpath /nixos-closure)"
-
-            # Initialize the system
-            export IN_NIXOS_SYSTEMD_STAGE1=true
-            exec chroot /sysroot "$closure/prepare-root"
-          '';
-      };
-
       # This will either call systemctl with the new init as the last parameter (which
       # is the case when not booting a NixOS system) or with an empty string, causing
       # systemd to bypass its verification code that checks whether the next file is a systemd
       # and using its compiled-in value
-      services.initrd-switch-root.serviceConfig = {
-        EnvironmentFile = "-/etc/switch-root.conf";
-        ExecStart = [
-          ""
-          ''systemctl --no-block switch-root /sysroot "''${NEW_INIT}"''
-        ];
+      services.initrd-switch-root = {
+        path = [ pkgs.prepare-root ];
+        environment = {
+          SH_BINARY = "${config.system.build.binsh}/bin/sh";
+          FIRMWARE = "${config.hardware.firmware}/lib/firmware";
+          MODEPROBE_BINARY = "${pkgs.kmod}/bin/modprobe";
+        };
+        serviceConfig = {
+          RuntimeDirectory = "initrd-switch-root";
+          EnvironmentFile = "-/run/initrd-switch-root/switch-root.env";
+          ExecStart = [
+            ""
+            "${pkgs.prepare-root}/bin/prepare-root"
+            ''systemctl --no-block switch-root /sysroot "''${NEW_INIT}"''
+          ];
+        };
       };
 
       services.panic-on-fail = {
