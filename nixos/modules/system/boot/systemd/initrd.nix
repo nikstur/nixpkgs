@@ -548,6 +548,7 @@ in
 
           # Resolving sysroot symlinks without code exec
           "${pkgs.prepare-root}/bin/chroot-realpath"
+          "${pkgs.prepare-root}/bin/find-prepare-root"
           "${pkgs.prepare-root}/bin/prepare-root"
           "${pkgs.prepare-root}/bin/find-etc"
         ]
@@ -613,7 +614,7 @@ in
           EnvironmentFile = "-/run/initrd-switch-root/switch-root.env";
           ExecStart = [
             ""
-            "${pkgs.prepare-root}/bin/prepare-root"
+            "${pkgs.prepare-root}/bin/find-prepare-root"
             ''systemctl --no-block switch-root /sysroot "''${NEW_INIT}"''
           ];
         };

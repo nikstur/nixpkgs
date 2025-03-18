@@ -1,12 +1,17 @@
-use anyhow::{anyhow, Result};
+use std::{
+    env,
+    io::{stdout, Write},
+    os::unix::ffi::OsStrExt,
+    path::{Path, PathBuf},
+};
 
-use std::env;
-use std::io::{stdout, Write};
-use std::os::unix::ffi::OsStrExt;
+use anyhow::{anyhow, Context, Result};
 
-use prepare_root::resolve_in_chroot;
+use prepare_root::setup_logger;
 
 fn main() -> Result<()> {
+    setup_logger();
+
     let args: Vec<String> = env::args().collect();
 
     if args.len() != 3 {
@@ -18,4 +23,17 @@ fn main() -> Result<()> {
     stdout().write_all(path.into_os_string().as_bytes())?;
 
     Ok(())
+}
+
+/// Resolve a potential symlink at `path` with the given `prefix` as root directory
+fn resolve_in_chroot(prefix: impl AsRef<Path>, path: impl AsRef<Path>) -> Result<PathBuf> {
+    std::os::unix::fs::chroot(&prefix)
+        .with_context(|| format!("Failed to chroot into {:?}", prefix.as_ref()))?;
+
+    std::env::set_current_dir("/").context("Failed to set CWD to /")?;
+
+    let res = std::fs::canonicalize(&path)
+        .with_context(|| format!("Failed to canonicalize {:?}", path.as_ref()))?;
+
+    Ok(res)
 }

@@ -2,6 +2,7 @@ mod activate;
 mod config;
 mod fs;
 mod init;
+mod logging;
 
 use std::{
     os::unix::fs::chroot,
@@ -11,22 +12,19 @@ use std::{
 
 use anyhow::{anyhow, bail, Context, Result};
 
-pub use crate::{activate::activate, init::init};
+pub use crate::{activate::activate, init::init, logging::setup_logger};
 
 const NIX_STORE_PATH: &str = "/nix/store";
 const SYSROOT_PATH: &str = "/sysroot";
 
 pub fn find_etc() -> Result<()> {
     let cmdline = std::fs::read_to_string("/proc/cmdline")?;
-
     let init = extract_init(&cmdline)?;
-
     let init_in_sysroot = canonicalize_in_chroot(SYSROOT_PATH, &init)?;
 
-    println!("init: {init_in_sysroot:?}");
-    let closure = init_in_sysroot.parent().context("TODO")?;
-
-    println!("closure: {closure:?}");
+    let closure = init_in_sysroot
+        .parent()
+        .context("Provided init= is not in a directory")?;
 
     let etc_metadata_image = Path::new(SYSROOT_PATH).join(
         canonicalize_in_chroot(SYSROOT_PATH, &closure.join("etc-metadata-image"))?
@@ -37,8 +35,6 @@ pub fn find_etc() -> Result<()> {
         canonicalize_in_chroot(SYSROOT_PATH, &closure.join("etc-basedir"))?.strip_prefix("/")?,
     );
 
-    println!("etc_metadata_image: {etc_metadata_image:?}\nbasedir: {etc_basedir:?}");
-
     std::os::unix::fs::symlink(etc_metadata_image, "/etc-metadata-image")
         .context("Failed to link etc metadata image")?;
 
@@ -48,31 +44,34 @@ pub fn find_etc() -> Result<()> {
     Ok(())
 }
 
-pub fn setup_closure_for_switch_root() -> Result<()> {
+/// Finds prepare-root in the toplevel, chroots and executes it.
+pub fn find_prepare_root() -> Result<()> {
     let cmdline = std::fs::read_to_string("/proc/cmdline")?;
 
     let init = extract_init(&cmdline)?;
 
     let init_in_sysroot = canonicalize_in_chroot(SYSROOT_PATH, &init)?;
     let closure = init_in_sysroot.parent().context("TODO")?;
-
-    // std::os::unix::fs::symlink(closure, "/nixos-closure").context("Failed to link closure")?;
+    log::info!("Preparing root for toplevel: {closure:?}");
 
     // TODO support non-systemd init binary
     std::fs::write("/run/initrd-switch-root/switch-root.env", "NEW_INIT=")
         .context("Failed to write switch-root-conf")?;
 
     chroot(SYSROOT_PATH).context("Failed to chroot into sysroot")?;
-
     std::env::set_current_dir("/").context("Failed to set CWD to /")?;
 
-    let cmd = Command::new(closure.join("prepare-root")) // TODO fix naming 😿
+    let prepare_root_path = closure.join("prepare-root");
+    let cmd = Command::new(&prepare_root_path)
         .env("TOPLEVEL", closure.as_os_str())
         .output()
-        .context("Failed to run init. Most likely, the binary is not on PATH")?;
+        .with_context(|| format!("Failed to run {prepare_root_path:?}"))?;
 
     if !cmd.status.success() {
-        bail!("init exited unsuccessfully")
+        bail!(
+            "prepare-root exited unsuccessfully: {}",
+            String::from_utf8_lossy(&cmd.stderr)
+        );
     }
 
     // TODO stderr?
@@ -114,25 +113,14 @@ pub fn canonicalize_in_chroot(prefix: &str, init: &Path) -> Result<PathBuf> {
         .context("Failed to run chroot-realpath. Most likely, the binary is not on PATH")?;
 
     if !cmd.status.success() {
-        eprintln!("{}", String::from_utf8_lossy(&cmd.stderr));
-        bail!("chroot-realpath exited unsuccessfully")
+        bail!(
+            "chroot-realpath exited unsuccessfully: {}",
+            String::from_utf8_lossy(&cmd.stderr)
+        );
     }
-    println!("{}", String::from_utf8_lossy(&cmd.stdout));
 
     let output =
         String::from_utf8(cmd.stdout).context("Failed to decode stdout of chroot-realpath")?;
 
     Ok(std::path::PathBuf::from(&output))
-}
-
-/// Resolve a potential symlink at `path` with the given `prefix` as root directory
-pub fn resolve_in_chroot(prefix: impl AsRef<Path>, path: impl AsRef<Path>) -> Result<PathBuf> {
-    chroot(&prefix).with_context(|| format!("Failed to chroot into {:?}", prefix.as_ref()))?;
-
-    std::env::set_current_dir("/").context("Failed to set CWD to /")?;
-
-    let res = std::fs::canonicalize(&path)
-        .with_context(|| format!("Failed to canonicalize {:?}", path.as_ref()))?;
-
-    Ok(res)
 }

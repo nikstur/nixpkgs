@@ -1,9 +1,10 @@
 use std::process::ExitCode;
 
-use prepare_root::setup_closure_for_switch_root;
-
+use prepare_root::{find_prepare_root, setup_logger};
 fn main() -> ExitCode {
-    match setup_closure_for_switch_root() {
+    setup_logger();
+
+    match find_prepare_root() {
         Ok(()) => ExitCode::SUCCESS,
         Err(err) => {
             eprintln!("{err:#}.");
