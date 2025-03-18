@@ -548,6 +548,7 @@ in
 
           # Resolving sysroot symlinks without code exec
           "${pkgs.prepare-root}/bin/chroot-realpath"
+          "${pkgs.prepare-root}/bin/find-closure"
         ]
         ++ jobScripts
         ++ map (c: builtins.removeAttrs c [ "text" ]) (builtins.attrValues cfg.contents);
@@ -592,51 +593,12 @@ in
         ];
         conflicts = [ "shutdown.target" ];
         requiredBy = [ "initrd.target" ];
+        path = [ pkgs.prepare-root ];
         serviceConfig = {
           Type = "oneshot";
           RemainAfterExit = true;
+          ExecStart = "${pkgs.prepare-root}/bin/find-closure";
         };
-
-        script = # bash
-          ''
-            set -uo pipefail
-            export PATH="/bin:${cfg.package.util-linux}/bin:${pkgs.chroot-realpath}/bin"
-
-            # Figure out what closure to boot
-            closure=
-            for o in $(< /proc/cmdline); do
-                case $o in
-                    init=*)
-                        IFS="=" read -r -a initParam <<< "$o"
-                        closure="''${initParam[1]}"
-                        ;;
-                esac
-            done
-
-            # Sanity check
-            if [ -z "''${closure:-}" ]; then
-              echo 'No init= parameter on the kernel command line' >&2
-              exit 1
-            fi
-
-            # Resolve symlinks in the init parameter. We need this for some boot loaders
-            # (e.g. boot.loader.generationsDir).
-            closure="$(chroot-realpath /sysroot "$closure")"
-
-            # Assume the directory containing the init script is the closure.
-            closure="$(dirname "$closure")"
-
-            ln --symbolic "$closure" /nixos-closure
-
-            # If we are not booting a NixOS closure (e.g. init=/bin/sh),
-            # we don't know what root to prepare so we don't do anything
-            if ! [ -x "/sysroot$(readlink "/sysroot$closure/prepare-root" || echo "$closure/prepare-root")" ]; then
-              echo "NEW_INIT=''${initParam[1]}" > /etc/switch-root.conf
-              echo "$closure does not look like a NixOS installation - not activating"
-              exit 0
-            fi
-            echo 'NEW_INIT=' > /etc/switch-root.conf
-          '';
       };
 
       # We need to propagate /run for things like /run/booted-system

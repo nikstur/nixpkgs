@@ -7,7 +7,7 @@ use std::{
     process::Command,
 };
 
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Context, Result};
 use sysinfo::Disks;
 
 use config::Config;
@@ -186,4 +186,29 @@ pub fn resolve_in_chroot(prefix: impl AsRef<Path>, path: impl AsRef<Path>) -> Re
     let res = std::fs::canonicalize(path).context("Failed to canonicalize {path}")?;
 
     Ok(res)
+}
+
+/// Returns the value of the `init` parameter of the given kernel `cmdline`.
+pub fn extract_init(cmdline: &str) -> Result<PathBuf> {
+    let init_params: Vec<&str> = cmdline
+        .split_ascii_whitespace()
+        .filter(|p| p.starts_with("init="))
+        .collect();
+
+    if init_params.len() != 1 {
+        return Err(anyhow!(
+            "expected exactly one init param on kernel cmdline: {cmdline}"
+        ));
+    }
+
+    let init = init_params
+        .first()
+        .ok_or(anyhow!(
+            "Failed to extract init parameter from kernel cmdline."
+        ))?
+        .split('=')
+        .last()
+        .ok_or(anyhow!("Failed to extract init path from init parameter."))?;
+
+    Ok(PathBuf::from(init))
 }
