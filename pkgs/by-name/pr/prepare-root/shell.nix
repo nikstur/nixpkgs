@@ -5,6 +5,7 @@ pkgs.mkShell {
   packages = [
     pkgs.clippy
     pkgs.rustfmt
+    pkgs.rust-analyzer
   ];
 
   inputsFrom = [ pkgs.prepare-root ];
