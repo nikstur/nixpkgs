@@ -247,6 +247,7 @@ stdenv.mkDerivation (finalAttrs: {
       ./0016-systemctl-edit-suggest-systemdctl-edit-runtime-on-sy.patch
       ./0017-meson.build-do-not-create-systemdstatedir.patch
       ./0018-Revert-bootctl-update-list-remove-all-instances-of-s.patch # https://github.com/systemd/systemd/issues/33392
+      ./0020-detect-systemd-by-name-rather-than-relying-on-SYSTEM.patch
     ]
     ++ lib.optionals (stdenv.hostPlatform.isLinux && stdenv.hostPlatform.isGnu) [
       ./0019-timesyncd-disable-NSCD-when-DNSSEC-validation-is-dis.patch
