@@ -6,7 +6,6 @@ mod logging;
 
 use std::{
     io::Write,
-    os::unix::fs::chroot,
     path::{Path, PathBuf},
     process::Command,
 };
@@ -46,38 +45,32 @@ pub fn find_etc() -> Result<()> {
 }
 
 /// Finds prepare-root in the toplevel, chroots and executes it.
-pub fn find_prepare_root() -> Result<()> {
+pub fn switch_root() -> Result<()> {
     let cmdline = std::fs::read_to_string("/proc/cmdline")?;
-
     let init = extract_init(&cmdline)?;
-
     let init_in_sysroot = canonicalize_in_chroot(SYSROOT_PATH, &init)?;
-    let closure = init_in_sysroot.parent().context("TODO")?;
-    log::info!("Preparing root for toplevel: {closure:?}");
 
-    // TODO support non-systemd init binary
-    std::fs::write("/etc/switch-root.conf", "NEW_INIT=")
-        .context("Failed to write switch-root.conf")?;
+    log::info!("Switching root to {SYSROOT_PATH}...");
+    log::info!("Running init {init_in_sysroot:?}...");
 
-    chroot(SYSROOT_PATH).context("Failed to chroot into sysroot")?;
-    std::env::set_current_dir("/").context("Failed to set CWD to /")?;
-
-    let prepare_root_path = closure.join("prepare-root");
-    let cmd = Command::new(&prepare_root_path)
-        .env("TOPLEVEL", closure.as_os_str())
+    let cmd = Command::new("systemctl")
+        .arg("--no-block")
+        .arg("switch-root")
+        .arg(SYSROOT_PATH)
+        .arg(&init_in_sysroot)
         .output()
-        .with_context(|| format!("Failed to run {prepare_root_path:?}"))?;
+        .with_context(|| format!("Failed to run systemctl switch-root with {init_in_sysroot:?}"))?;
+
+    log::info!("Finished");
 
     let _ = std::io::stderr().write_all(&cmd.stderr);
 
     if !cmd.status.success() {
         bail!(
-            "prepare-root exited unsuccessfully: {}",
+            "systemctl switch-root exited unsuccessfully: {}",
             String::from_utf8_lossy(&cmd.stderr)
         );
     }
-
-    // TODO stderr?
 
     Ok(())
 }

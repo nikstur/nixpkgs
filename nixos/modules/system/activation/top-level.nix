@@ -8,11 +8,13 @@ let
       mkdir $out
 
       ${if config.boot.initrd.systemd.enable then ''
-        cp ${pkgs.prepare-root}/bin/prepare-root $out/prepare-root
-        # This must not be a symlink or the abs_path of the grub builder for the tests
-        # will resolve the symlink and we end up with a path that doesn't point to a
-        # system closure.
-        cp "$systemd/lib/systemd/systemd" $out/init
+        cp ${pkgs.prepare-root}/bin/init $out/init
+        wrapProgram $out/init \
+          --set SH_BINARY "${config.system.build.binsh}/bin/sh" \
+          --set FIRMWARE "${config.hardware.firmware}/lib/firmware" \
+          --set MODPROBE_BINARY "${pkgs.kmod}/bin/modprobe" \
+          --set TOPLEVEL $out \
+          --set SYSTEMD_BINARY ${config.boot.systemdExecutable}
       '' else ''
         cp ${config.system.build.bootStage2} $out/init
         substituteInPlace $out/init --subst-var-by systemConfig $out
@@ -55,6 +57,9 @@ let
     preferLocalBuild = true;
     allowSubstitutes = false;
     passAsFile = [ "extraDependencies" ];
+
+    nativeBuildInputs = [ pkgs.buildPackages.makeBinaryWrapper ];
+
     buildCommand = systemBuilder;
 
     systemd = config.systemd.package;

@@ -1,4 +1,8 @@
-use std::{fs, os::unix::fs::PermissionsExt, process::Command};
+use std::{
+    fs,
+    os::unix::{fs::PermissionsExt, process::CommandExt},
+    process::Command,
+};
 
 use anyhow::{Context, Result};
 use sysinfo::Disks;
@@ -20,6 +24,8 @@ pub fn init() -> Result<()> {
 
     log::info!("Activating the system...");
     activate(&config)?;
+
+    let _ = Command::new(&config.systemd_binary).exec();
 
     Ok(())
 }

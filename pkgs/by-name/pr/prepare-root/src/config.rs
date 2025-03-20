@@ -7,6 +7,7 @@ pub struct Config {
     pub toplevel: String,
     pub firmware: String,
     pub modprobe_binary: String,
+    pub systemd_binary: String,
 }
 
 impl Config {
@@ -15,12 +16,14 @@ impl Config {
         let toplevel = EnvVar::Toplevel.required()?;
         let firmware = EnvVar::Firmware.required()?;
         let modprobe_binary = EnvVar::ModprobeBinary.required()?;
+        let systemd_binary = EnvVar::SystemdBinary.required()?;
 
         Ok(Self {
             sh_binary,
             toplevel,
             firmware,
             modprobe_binary,
+            systemd_binary,
         })
     }
 }
@@ -30,6 +33,7 @@ enum EnvVar {
     Toplevel,
     Firmware,
     ModprobeBinary,
+    SystemdBinary,
 }
 
 impl EnvVar {
@@ -47,6 +51,7 @@ impl EnvVar {
             Self::Toplevel => "TOPLEVEL",
             Self::Firmware => "FIRMWARE",
             Self::ModprobeBinary => "MODPROBE_BINARY",
+            Self::SystemdBinary => "SYSTEMD_BINARY",
         }
     }
 }

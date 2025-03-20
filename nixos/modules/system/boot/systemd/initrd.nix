@@ -548,9 +548,8 @@ in
 
           # Resolving sysroot symlinks without code exec
           "${pkgs.prepare-root}/bin/chroot-realpath"
-          "${pkgs.prepare-root}/bin/find-prepare-root"
-          "${pkgs.prepare-root}/bin/prepare-root"
           "${pkgs.prepare-root}/bin/find-etc"
+          "${pkgs.prepare-root}/bin/switch-root"
         ]
         ++ jobScripts
         ++ map (c: builtins.removeAttrs c [ "text" ]) (builtins.attrValues cfg.contents);
@@ -603,24 +602,14 @@ in
       # systemd to bypass its verification code that checks whether the next file is a systemd
       # and using its compiled-in value
       services.initrd-switch-root = {
-        path = [ pkgs.prepare-root ];
-        environment = {
-          SH_BINARY = "${config.system.build.binsh}/bin/sh";
-          FIRMWARE = "${config.hardware.firmware}/lib/firmware";
-          MODPROBE_BINARY = "${pkgs.kmod}/bin/modprobe";
-        };
+        path = [
+          pkgs.prepare-root
+          pkgs.systemd
+        ];
         serviceConfig = {
-          RuntimeDirectory = "initrd-switch-root";
-          EnvironmentFile = "-/run/initrd-switch-root/switch-root.env";
-          BindPaths = [
-            "/dev:/sysroot/dev:rbind"
-            "/sys:/sysroot/sys:rbind"
-            "/proc:/sysroot/proc:rbind"
-          ];
           ExecStart = [
             ""
-            "${pkgs.prepare-root}/bin/find-prepare-root"
-            ''systemctl --no-block switch-root /sysroot "''${NEW_INIT}"''
+            "${pkgs.prepare-root}/bin/switch-root"
           ];
         };
       };

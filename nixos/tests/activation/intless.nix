@@ -14,6 +14,7 @@ in
       ];
       virtualisation.mountHostNixStore = false;
       virtualisation.useNixStoreImage = true;
+      boot.kernelParams = [ "systemd.log_level=debug" ];
     };
 
   testScript = # python
