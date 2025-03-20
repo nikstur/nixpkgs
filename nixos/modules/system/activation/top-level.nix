@@ -10,10 +10,9 @@ let
       ${if config.boot.initrd.systemd.enable then ''
         cp ${pkgs.prepare-root}/bin/init $out/init
         wrapProgram $out/init \
-          --set SH_BINARY "${config.system.build.binsh}/bin/sh" \
+          --set TOPLEVEL $out \
           --set FIRMWARE "${config.hardware.firmware}/lib/firmware" \
           --set MODPROBE_BINARY "${pkgs.kmod}/bin/modprobe" \
-          --set TOPLEVEL $out \
           --set SYSTEMD_BINARY ${config.boot.systemdExecutable}
       '' else ''
         cp ${config.system.build.bootStage2} $out/init

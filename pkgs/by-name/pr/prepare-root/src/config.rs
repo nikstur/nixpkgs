@@ -3,7 +3,6 @@ use std::env;
 use anyhow::{Context, Result};
 
 pub struct Config {
-    pub sh_binary: String,
     pub toplevel: String,
     pub firmware: String,
     pub modprobe_binary: String,
@@ -12,14 +11,12 @@ pub struct Config {
 
 impl Config {
     pub fn from_env() -> Result<Self> {
-        let sh_binary = EnvVar::ShBinary.required()?;
         let toplevel = EnvVar::Toplevel.required()?;
         let firmware = EnvVar::Firmware.required()?;
         let modprobe_binary = EnvVar::ModprobeBinary.required()?;
         let systemd_binary = EnvVar::SystemdBinary.required()?;
 
         Ok(Self {
-            sh_binary,
             toplevel,
             firmware,
             modprobe_binary,
@@ -29,7 +26,6 @@ impl Config {
 }
 
 enum EnvVar {
-    ShBinary,
     Toplevel,
     Firmware,
     ModprobeBinary,
@@ -47,7 +43,6 @@ impl EnvVar {
 
     fn key(&self) -> &str {
         match self {
-            Self::ShBinary => "SH_BINARY",
             Self::Toplevel => "TOPLEVEL",
             Self::Firmware => "FIRMWARE",
             Self::ModprobeBinary => "MODPROBE_BINARY",

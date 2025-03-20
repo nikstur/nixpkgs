@@ -2,16 +2,12 @@ use std::{fs, path::Path};
 
 use anyhow::{Context, Result};
 
-use crate::config::Config;
-use crate::fs::atomic_symlink;
+use crate::{config::Config, fs::atomic_symlink};
 
 /// Activate the system.
 ///
 /// This runs both during boot and durign re-activation during switch-to-configuration.
 pub fn activate(config: &Config) -> Result<()> {
-    log::info!("Setting up /bin/sh...");
-    atomic_symlink(&config.sh_binary, "/bin/sh")?;
-
     log::info!("Setting up /run/current-system...");
     atomic_symlink(&config.toplevel, "/run/current-system")?;
 

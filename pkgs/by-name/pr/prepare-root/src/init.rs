@@ -11,7 +11,12 @@ use crate::{activate::activate, config::Config, fs::atomic_symlink, NIX_STORE_PA
 
 /// Activate the system.
 pub fn init() -> Result<()> {
-    let config = Config::from_env().context("failed to get configuration")?;
+    let config = Config::from_env().context("Failed to get configuration")?;
+
+    // This is a dumb workaround for systemd to not shit its pants when there is no populated
+    // /usr.
+    log::info!("Setting up /usr for systemd...");
+    fs::create_dir_all("/usr/bin").context("Failed to create a populated /usr")?;
 
     log::info!("Setting up Nix Store permissions...");
     setup_nix_store_permissions();
@@ -25,6 +30,7 @@ pub fn init() -> Result<()> {
     log::info!("Activating the system...");
     activate(&config)?;
 
+    log::info!("Executing systemd...");
     let _ = Command::new(&config.systemd_binary).exec();
 
     Ok(())

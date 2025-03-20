@@ -61,8 +61,6 @@ pub fn switch_root() -> Result<()> {
         .output()
         .with_context(|| format!("Failed to run systemctl switch-root with {init_in_sysroot:?}"))?;
 
-    log::info!("Finished");
-
     let _ = std::io::stderr().write_all(&cmd.stderr);
 
     if !cmd.status.success() {
