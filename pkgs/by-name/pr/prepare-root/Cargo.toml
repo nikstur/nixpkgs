@@ -10,10 +10,12 @@ env_logger = { version = "0.11.7", default-features = false }
 sysinfo = { version = "0.32", default-features = false, features = [ "disk" ]}
 
 [profile.release]
-opt-level = "s"
+# FIXME
+# opt-level = "s"
+opt-level = 1
 panic = "abort"
-lto = true
-strip = true
+# lto = true
+# strip = true
 
 [lints.rust]
 unsafe_code = "forbid"
