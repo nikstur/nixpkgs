@@ -7,8 +7,6 @@ use crate::{activate::activate, config::Config, fs::atomic_symlink, NIX_STORE_PA
 
 /// Activate the system.
 pub fn init() -> Result<()> {
-    eprintln!("DEBUG: init");
-
     let config = Config::from_env().context("failed to get configuration")?;
 
     log::info!("Setting up Nix Store permissions...");

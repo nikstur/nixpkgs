@@ -5,6 +5,7 @@ mod init;
 mod logging;
 
 use std::{
+    io::Write,
     os::unix::fs::chroot,
     path::{Path, PathBuf},
     process::Command,
@@ -55,8 +56,8 @@ pub fn find_prepare_root() -> Result<()> {
     log::info!("Preparing root for toplevel: {closure:?}");
 
     // TODO support non-systemd init binary
-    std::fs::write("/run/initrd-switch-root/switch-root.env", "NEW_INIT=")
-        .context("Failed to write switch-root-conf")?;
+    std::fs::write("/etc/switch-root.conf", "NEW_INIT=")
+        .context("Failed to write switch-root.conf")?;
 
     chroot(SYSROOT_PATH).context("Failed to chroot into sysroot")?;
     std::env::set_current_dir("/").context("Failed to set CWD to /")?;
@@ -66,6 +67,8 @@ pub fn find_prepare_root() -> Result<()> {
         .env("TOPLEVEL", closure.as_os_str())
         .output()
         .with_context(|| format!("Failed to run {prepare_root_path:?}"))?;
+
+    let _ = std::io::stderr().write_all(&cmd.stderr);
 
     if !cmd.status.success() {
         bail!(
