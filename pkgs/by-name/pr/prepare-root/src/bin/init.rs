@@ -1,9 +1,9 @@
 use std::process::ExitCode;
 
-use prepare_root::{init, setup_logger};
+use prepare_root::init;
 
 fn main() -> ExitCode {
-    setup_logger();
+    kernlog::init().expect("Failed to initialize kernel logger");
 
     match init() {
         Ok(()) => ExitCode::SUCCESS,

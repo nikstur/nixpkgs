@@ -24,7 +24,7 @@ pub fn switch_root() -> Result<()> {
     let init_in_sysroot = find_init_in_sysroot()?;
 
     log::info!("Switching root to {SYSROOT_PATH}...");
-    log::info!("Running init {init_in_sysroot:?}...");
+    log::info!("With init {init_in_sysroot:?}...");
 
     let cmd = Command::new("systemctl")
         .arg("--no-block")
