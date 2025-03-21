@@ -5,7 +5,7 @@ use std::{
 
 use anyhow::{bail, Context, Result};
 
-use prepare_root::{find_init_in_sysroot, setup_logger, SYSROOT_PATH};
+use nixos_init::{find_init_in_sysroot, setup_logger, SYSROOT_PATH};
 
 fn main() -> ExitCode {
     setup_logger();
@@ -19,7 +19,7 @@ fn main() -> ExitCode {
     }
 }
 
-/// Finds prepare-root in the toplevel, chroots and executes it.
+/// Switches root from initrd.
 pub fn switch_root() -> Result<()> {
     let init_in_sysroot = find_init_in_sysroot()?;
 

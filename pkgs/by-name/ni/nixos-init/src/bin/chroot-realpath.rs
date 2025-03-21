@@ -7,7 +7,7 @@ use std::{
 
 use anyhow::{anyhow, Context, Result};
 
-use prepare_root::setup_logger;
+use nixos_init::setup_logger;
 
 fn main() -> Result<()> {
     setup_logger();

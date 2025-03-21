@@ -143,7 +143,7 @@
               before = [ "shutdown.target" ];
               conflicts = [ "shutdown.target" ];
               requiredBy = [ "initrd.target" ];
-              path = [ pkgs.prepare-root ];
+              path = [ pkgs.nixos-init ];
               unitConfig = {
                 DefaultDependencies = false;
                 RequiresMountsFor = "/sysroot/nix/store";
@@ -151,7 +151,7 @@
               serviceConfig = {
                 Type = "oneshot";
                 RemainAfterExit = true;
-                ExecStart = "${pkgs.prepare-root}/bin/find-etc";
+                ExecStart = "${pkgs.nixos-init}/bin/find-etc";
               };
             };
           }

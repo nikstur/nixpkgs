@@ -2,7 +2,7 @@ use std::{path::Path, process::ExitCode};
 
 use anyhow::{Context, Result};
 
-use prepare_root::{canonicalize_in_chroot, find_init_in_sysroot, setup_logger, SYSROOT_PATH};
+use nixos_init::{canonicalize_in_chroot, find_init_in_sysroot, setup_logger, SYSROOT_PATH};
 
 fn main() -> ExitCode {
     setup_logger();

@@ -8,7 +8,7 @@ pkgs.mkShell {
     pkgs.rust-analyzer
   ];
 
-  inputsFrom = [ pkgs.prepare-root ];
+  inputsFrom = [ pkgs.nixos-init ];
 
   RUST_SRC_PATH = "${pkgs.rust.packages.stable.rustPlatform.rustLibSrc}";
 }

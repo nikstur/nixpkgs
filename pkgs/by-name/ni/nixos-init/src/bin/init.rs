@@ -1,6 +1,6 @@
 use std::process::ExitCode;
 
-use prepare_root::init;
+use nixos_init::init;
 
 fn main() -> ExitCode {
     kernlog::init().expect("Failed to initialize kernel logger");

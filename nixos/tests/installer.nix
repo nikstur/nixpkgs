@@ -759,7 +759,7 @@ let
                 pkgs.bootspec
               ]
               ++ optionals clevisTest [ pkgs.klibc ]
-              ++ optional systemdStage1 pkgs.prepare-root;
+              ++ optional systemdStage1 pkgs.nixos-init;
 
             nix.settings = {
               substituters = mkForce [ ];

@@ -547,9 +547,9 @@ in
           "${pkgs.glibc}/lib/libnss_files.so.2"
 
           # Resolving sysroot symlinks without code exec
-          "${pkgs.prepare-root}/bin/chroot-realpath"
-          "${pkgs.prepare-root}/bin/find-etc"
-          "${pkgs.prepare-root}/bin/switch-root"
+          "${pkgs.nixos-init}/bin/chroot-realpath"
+          "${pkgs.nixos-init}/bin/find-etc"
+          "${pkgs.nixos-init}/bin/switch-root"
         ]
         ++ jobScripts
         ++ map (c: builtins.removeAttrs c [ "text" ]) (builtins.attrValues cfg.contents);
@@ -603,13 +603,13 @@ in
       # and using its compiled-in value
       services.initrd-switch-root = {
         path = [
-          pkgs.prepare-root
+          pkgs.nixos-init
           pkgs.systemd
         ];
         serviceConfig = {
           ExecStart = [
             ""
-            "${pkgs.prepare-root}/bin/switch-root"
+            "${pkgs.nixos-init}/bin/switch-root"
           ];
         };
       };

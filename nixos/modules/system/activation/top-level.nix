@@ -8,7 +8,7 @@ let
       mkdir $out
 
       ${if config.boot.initrd.systemd.enable then ''
-        cp ${pkgs.prepare-root}/bin/init $out/init
+        cp ${pkgs.nixos-init}/bin/init $out/init
         wrapProgram $out/init \
           --set TOPLEVEL $out \
           --set FIRMWARE "${config.hardware.firmware}/lib/firmware" \
