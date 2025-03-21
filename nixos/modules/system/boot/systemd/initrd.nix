@@ -547,7 +547,7 @@ in
           "${pkgs.glibc}/lib/libnss_files.so.2"
 
           # Resolving sysroot symlinks without code exec
-          "${pkgs.nixos-init}/bin/chroot-realpath"
+          "${pkgs.chroot-realpath}/bin/chroot-realpath"
           "${pkgs.nixos-init}/bin/find-etc"
           "${pkgs.nixos-init}/bin/switch-root"
         ]
