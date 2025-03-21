@@ -143,7 +143,7 @@
               before = [ "shutdown.target" ];
               conflicts = [ "shutdown.target" ];
               requiredBy = [ "initrd.target" ];
-              path = [ pkgs.nixos-init ];
+              path = [ pkgs.chroot-realpath ];
               unitConfig = {
                 DefaultDependencies = false;
                 RequiresMountsFor = "/sysroot/nix/store";

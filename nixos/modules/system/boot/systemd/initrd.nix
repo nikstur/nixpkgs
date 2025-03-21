@@ -548,7 +548,11 @@ in
 
           # Resolving sysroot symlinks without code exec
           "${pkgs.chroot-realpath}/bin/chroot-realpath"
+
+          # Finding etc overlay files in sysroot
           "${pkgs.nixos-init}/bin/find-etc"
+        ]
+        ++ lib.optionals config.system.nixos-init.enable [
           "${pkgs.nixos-init}/bin/switch-root"
         ]
         ++ jobScripts
@@ -581,6 +585,65 @@ in
           ) cfg.automounts
         );
 
+      services.initrd-find-nixos-closure = lib.mkIf (!config.system.nixos-init.enable) {
+        description = "Find NixOS closure";
+
+        unitConfig = {
+          RequiresMountsFor = "/sysroot/nix/store";
+          DefaultDependencies = false;
+        };
+        before = [
+          "initrd.target"
+          "shutdown.target"
+        ];
+        conflicts = [ "shutdown.target" ];
+        requiredBy = [ "initrd.target" ];
+        serviceConfig = {
+          Type = "oneshot";
+          RemainAfterExit = true;
+        };
+
+        script = # bash
+          ''
+            set -uo pipefail
+            export PATH="/bin:${cfg.package.util-linux}/bin:${pkgs.chroot-realpath}/bin"
+
+            # Figure out what closure to boot
+            closure=
+            for o in $(< /proc/cmdline); do
+                case $o in
+                    init=*)
+                        IFS="=" read -r -a initParam <<< "$o"
+                        closure="''${initParam[1]}"
+                        ;;
+                esac
+            done
+            # Sanity check
+            if [ -z "''${closure:-}" ]; then
+              echo 'No init= parameter on the kernel command line' >&2
+              exit 1
+            fi
+
+            # Resolve symlinks in the init parameter. We need this for some boot loaders
+            # (e.g. boot.loader.generationsDir).
+            closure="$(chroot-realpath /sysroot "$closure")"
+
+            # Assume the directory containing the init script is the closure.
+            closure="$(dirname "$closure")"
+
+            ln --symbolic "$closure" /nixos-closure
+
+            # If we are not booting a NixOS closure (e.g. init=/bin/sh),
+            # we don't know what root to prepare so we don't do anything
+            if ! [ -x "/sysroot$(readlink "/sysroot$closure/prepare-root" || echo "$closure/prepare-root")" ]; then
+              echo "NEW_INIT=''${initParam[1]}" > /etc/switch-root.conf
+              echo "$closure does not look like a NixOS installation - not activating"
+              exit 0
+            fi
+            echo 'NEW_INIT=' > /etc/switch-root.conf
+          '';
+      };
+
       # We need to propagate /run for things like /run/booted-system
       # and /run/current-system.
       mounts = [
@@ -597,22 +660,62 @@ in
         }
       ];
 
-      # This will either call systemctl with the new init as the last parameter (which
-      # is the case when not booting a NixOS system) or with an empty string, causing
-      # systemd to bypass its verification code that checks whether the next file is a systemd
-      # and using its compiled-in value
-      services.initrd-switch-root = {
-        path = [
-          pkgs.nixos-init
-          pkgs.systemd
-        ];
-        serviceConfig = {
-          ExecStart = [
-            ""
-            "${pkgs.nixos-init}/bin/switch-root"
+      services.initrd-nixos-activation = lib.mkIf (!config.system.nixos-init.enable) {
+        after = [ "initrd-switch-root.target" ];
+        requiredBy = [ "initrd-switch-root.service" ];
+        before = [ "initrd-switch-root.service" ];
+        unitConfig.DefaultDependencies = false;
+        unitConfig = {
+          AssertPathExists = "/etc/initrd-release";
+          RequiresMountsFor = [
+            "/sysroot/run"
           ];
         };
+        serviceConfig.Type = "oneshot";
+        description = "NixOS Activation";
+
+        script = # bash
+          ''
+            set -uo pipefail
+            export PATH="/bin:${cfg.package.util-linux}/bin"
+
+            closure="$(realpath /nixos-closure)"
+
+            # Initialize the system
+            export IN_NIXOS_SYSTEMD_STAGE1=true
+            exec chroot /sysroot "$closure/prepare-root"
+          '';
       };
+
+      services.initrd-switch-root =
+        if config.system.nixos-init.enable then
+          {
+            path = [
+              pkgs.chroot-realpath
+              config.boot.initrd.systemd.package
+            ];
+            serviceConfig = {
+              ExecStart = [
+                ""
+                "${pkgs.nixos-init}/bin/switch-root"
+              ];
+            };
+          }
+        else
+          {
+            # This will either call systemctl with the new init as the last
+            # parameter (which is the case when not booting a NixOS system) or
+            # with an empty string, causing systemd to bypass its verification
+            # code that checks whether the next file is a systemd binary and
+            # using its compiled-in value.
+            serviceConfig = {
+              EnvironmentFile = "-/etc/switch-root.conf";
+              ExecStart = [
+                ""
+                ''systemctl --no-block switch-root /sysroot "''${NEW_INIT}"''
+              ];
+            };
+          };
 
       services.panic-on-fail = {
         wantedBy = [ "emergency.target" ];
