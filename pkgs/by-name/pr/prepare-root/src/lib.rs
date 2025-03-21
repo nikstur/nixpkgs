@@ -9,20 +9,25 @@ use std::{
     process::Command,
 };
 
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{bail, Context, Result};
 
 pub use crate::{activate::activate, init::init, logging::setup_logger};
 
 const NIX_STORE_PATH: &str = "/nix/store";
 pub const SYSROOT_PATH: &str = "/sysroot";
 
+/// Find the canocalized path of the init in the sysroot.
+///
+/// Uses the `init=` parameter on the kernel commandline.
+///
+/// Returns the relative path of the init to the sysroot, i.e. without the `/sysroot` prefix.
 pub fn find_init_in_sysroot() -> Result<PathBuf> {
     let cmdline = std::fs::read_to_string("/proc/cmdline")?;
     let init = extract_init(&cmdline)?;
     canonicalize_in_chroot(SYSROOT_PATH, &init)
 }
 
-/// Returns the value of the `init` parameter of the given kernel `cmdline`.
+/// Extract the value of the `init` parameter from the given kernel `cmdline`.
 fn extract_init(cmdline: &str) -> Result<PathBuf> {
     let init_params: Vec<&str> = cmdline
         .split_ascii_whitespace()
@@ -30,40 +35,34 @@ fn extract_init(cmdline: &str) -> Result<PathBuf> {
         .collect();
 
     if init_params.len() != 1 {
-        return Err(anyhow!(
-            "Expected exactly one init param on kernel cmdline: {cmdline}"
-        ));
+        bail!("Expected exactly one init param on kernel cmdline: {cmdline}")
     }
 
     let init = init_params
         .first()
-        .ok_or(anyhow!(
-            "Failed to extract init parameter from kernel cmdline."
-        ))?
-        .split('=')
-        .last()
-        .ok_or(anyhow!("Failed to extract init path from init parameter."))?;
+        .and_then(|s| s.split('=').last())
+        .context("Failed to extract init path from kernel cmdline: {cmdline}")?;
 
     Ok(PathBuf::from(init))
 }
 
-/// Locate the system closure.
-pub fn canonicalize_in_chroot(prefix: &str, init: &Path) -> Result<PathBuf> {
-    let cmd = Command::new("chroot-realpath")
-        .arg(prefix)
-        .arg(init.as_os_str())
+/// Canonicalize `path` in a chroot at the specified `root`.
+pub fn canonicalize_in_chroot(root: &str, path: &Path) -> Result<PathBuf> {
+    let output = Command::new("chroot-realpath")
+        .arg(root)
+        .arg(path.as_os_str())
         .output()
-        .context("Failed to run chroot-realpath. Most likely, the binary is not on PATH")?;
+        .context("Failed to run chroot-realpath. Most likely, the binary is not on PATH.")?;
 
-    if !cmd.status.success() {
+    if !output.status.success() {
         bail!(
             "chroot-realpath exited unsuccessfully: {}",
-            String::from_utf8_lossy(&cmd.stderr)
+            String::from_utf8_lossy(&output.stderr)
         );
     }
 
     let output =
-        String::from_utf8(cmd.stdout).context("Failed to decode stdout of chroot-realpath")?;
+        String::from_utf8(output.stdout).context("Failed to decode stdout of chroot-realpath.")?;
 
-    Ok(std::path::PathBuf::from(&output))
+    Ok(PathBuf::from(&output))
 }

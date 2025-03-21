@@ -33,10 +33,10 @@ fn find_etc() -> Result<()> {
     );
 
     std::os::unix::fs::symlink(etc_metadata_image, "/etc-metadata-image")
-        .context("Failed to link etc metadata image")?;
+        .context("Failed to link /etc-metadata-image")?;
 
     std::os::unix::fs::symlink(etc_basedir, "/etc-basedir")
-        .context("Failed to link etc basedir")?;
+        .context("Failed to link /etc-basedir")?;
 
     Ok(())
 }
