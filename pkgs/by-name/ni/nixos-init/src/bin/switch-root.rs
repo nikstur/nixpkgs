@@ -20,7 +20,7 @@ fn main() -> ExitCode {
 }
 
 /// Switches root from initrd.
-pub fn switch_root() -> Result<()> {
+fn switch_root() -> Result<()> {
     let init_in_sysroot = find_init_in_sysroot()?;
 
     log::info!("Switching root to {SYSROOT_PATH}...");
