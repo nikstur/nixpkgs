@@ -1,6 +1,9 @@
-{ pkgs, ... }:
+{ lib, pkgs, ... }:
+
 {
   name = "nixos-init";
+
+  meta.maintainers = with lib.maintainers; [ nikstur ];
 
   nodes.machine =
     { modulesPath, ... }:
