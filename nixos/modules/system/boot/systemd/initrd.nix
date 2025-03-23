@@ -550,10 +550,10 @@ in
           "${pkgs.chroot-realpath}/bin/chroot-realpath"
 
           # Finding etc overlay files in sysroot
-          "${pkgs.nixos-init}/bin/find-etc"
+          "${config.system.nixos-init.package}/bin/find-etc"
         ]
         ++ lib.optionals config.system.nixos-init.enable [
-          "${pkgs.nixos-init}/bin/switch-root"
+          "${config.system.nixos-init.package}/bin/switch-root"
         ]
         ++ jobScripts
         ++ map (c: builtins.removeAttrs c [ "text" ]) (builtins.attrValues cfg.contents);
