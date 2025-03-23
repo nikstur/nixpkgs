@@ -9,11 +9,11 @@ while still passing along the state. This way, we can start our own init
 starts in stage 2 while getting all the benefits of passing state from
 initrd to stage 2.
 ---
- src/core/main.c | 6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+ src/core/main.c | 10 +++++++---
+ 1 file changed, 7 insertions(+), 3 deletions(-)
 
 diff --git a/src/core/main.c b/src/core/main.c
-index 4bd2d8df75..a337563f6e 100644
+index 4bd2d8df75..59b8996e51 100644
 --- a/src/core/main.c
 +++ b/src/core/main.c
 @@ -2027,7 +2027,7 @@ static int do_reexecute(
@@ -25,16 +25,20 @@ index 4bd2d8df75..a337563f6e 100644
                  char sfd[STRLEN("--deserialize=") + DECIMAL_STR_MAX(int)];
  
                  /* First try to spawn ourselves with the right path, and with full serialization. We do this
-@@ -2061,7 +2061,7 @@ static int do_reexecute(
+@@ -2061,7 +2061,11 @@ static int do_reexecute(
                   */
                  valgrind_summary_hack();
  
 -                args[0] = SYSTEMD_BINARY_PATH;
-+                args[0] = switch_root_init;
++                if (switch_root_init) {
++                        args[0] = switch_root_init;
++                } else {
++                        args[0] = SYSTEMD_BINARY_PATH;
++                }
                  (void) execv(args[0], (char* const*) args);
  
                  if (objective == MANAGER_REEXECUTE) {
-@@ -2234,7 +2234,7 @@ static int invoke_main_loop(
+@@ -2234,7 +2238,7 @@ static int invoke_main_loop(
  
                          manager_set_switching_root(m, true);
  
