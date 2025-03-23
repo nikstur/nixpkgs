@@ -11,6 +11,15 @@ use crate::{activate::activate, config::Config, fs::atomic_symlink, NIX_STORE_PA
 
 /// Activate the system.
 pub fn init() -> Result<()> {
+    let args = std::env::args_os().skip(1).collect::<Vec<_>>();
+    log::debug!(
+        "Received arguments: {}",
+        args.iter()
+            .filter_map(|s| s.as_os_str().to_str())
+            .collect::<Vec<_>>()
+            .join(" ")
+    );
+
     let config = Config::from_env().context("Failed to get configuration")?;
 
     // This is a dumb workaround for systemd to not shit its pants when there is no populated
@@ -31,7 +40,7 @@ pub fn init() -> Result<()> {
     activate(&config)?;
 
     log::info!("Executing systemd...");
-    let _ = Command::new(&config.systemd_binary).exec();
+    let _ = Command::new(&config.systemd_binary).args(args).exec();
 
     Ok(())
 }
