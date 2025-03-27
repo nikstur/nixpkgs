@@ -443,12 +443,13 @@ in
       ++ lib.optional (config.boot.initrd.systemd.root == "gpt-auto") "rw";
 
     boot.initrd.systemd = {
-      # bashInteractive is easier to use and also required by debug-shell.service
       initrdBin = [
-        pkgs.bashInteractive
         pkgs.coreutils
         cfg.package.kmod
         cfg.package
+      ] ++ lib.optionals config.environment.enableShell [
+        # bashInteractive is easier to use and also required by debug-shell.service
+        pkgs.bashInteractive
       ];
       extraBin = {
         less = "${pkgs.less}/bin/less";
@@ -538,11 +539,6 @@ in
           "${cfg.package.util-linux}/bin/umount"
           "${cfg.package.util-linux}/bin/sulogin"
 
-          # required for services generated with writeShellScript and friends
-          pkgs.runtimeShell
-          # some tools like xfs still want the sh symlink
-          "${pkgs.bash}/bin"
-
           # so NSS can look up usernames
           "${pkgs.glibc}/lib/libnss_files.so.2"
 
@@ -554,6 +550,11 @@ in
         ]
         ++ lib.optionals config.system.nixos-init.enable [
           "${config.system.nixos-init.package}/bin/switch-root"
+        ] ++ lib.optionals config.environment.enableShell [
+          # required for services generated with writeShellScript and friends
+          pkgs.runtimeShell
+          # some tools like xfs still want the sh symlink
+          "${pkgs.bash}/bin"
         ]
         ++ jobScripts
         ++ map (c: builtins.removeAttrs c [ "text" ]) (builtins.attrValues cfg.contents);
