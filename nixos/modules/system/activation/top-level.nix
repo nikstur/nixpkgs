@@ -12,7 +12,16 @@ let
     mkdir $out
 
     ${
-      if config.boot.initrd.systemd.enable then
+      if config.system.nixos-init.enable then
+        ''
+          cp ${config.system.nixos-init.package}/bin/init $out/init
+          wrapProgram $out/init \
+            --set TOPLEVEL $out \
+            --set FIRMWARE "${config.hardware.firmware}/lib/firmware" \
+            --set MODPROBE_BINARY "${pkgs.kmod}/bin/modprobe" \
+            --set SYSTEMD_BINARY $systemd/lib/systemd/systemd
+        ''
+      else if config.boot.initrd.systemd.enable then
         ''
           cp ${config.system.build.bootStage2} $out/prepare-root
           substituteInPlace $out/prepare-root --subst-var-by systemConfig $out
@@ -65,6 +74,9 @@ let
       preferLocalBuild = true;
       allowSubstitutes = false;
       passAsFile = [ "extraDependencies" ];
+
+      nativeBuildInputs = [ pkgs.buildPackages.makeBinaryWrapper ];
+
       buildCommand = systemBuilder;
 
       systemd = config.systemd.package;

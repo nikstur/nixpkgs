@@ -438,13 +438,16 @@ in
       ++ lib.optional (config.boot.initrd.systemd.root == "gpt-auto") "rw";
 
     boot.initrd.systemd = {
-      # bashInteractive is easier to use and also required by debug-shell.service
-      initrdBin = [
-        pkgs.bashInteractive
-        pkgs.coreutils
-        cfg.package.kmod
-        cfg.package
-      ];
+      initrdBin =
+        [
+          pkgs.coreutils
+          cfg.package.kmod
+          cfg.package
+        ]
+        ++ lib.optionals config.environment.enableShell [
+          # bashInteractive is easier to use and also required by debug-shell.service
+          pkgs.bashInteractive
+        ];
       extraBin = {
         less = "${pkgs.less}/bin/less";
         mount = "${cfg.package.util-linux}/bin/mount";
@@ -533,16 +536,23 @@ in
           "${cfg.package.util-linux}/bin/umount"
           "${cfg.package.util-linux}/bin/sulogin"
 
-          # required for services generated with writeShellScript and friends
-          pkgs.runtimeShell
-          # some tools like xfs still want the sh symlink
-          "${pkgs.bash}/bin"
-
           # so NSS can look up usernames
           "${pkgs.glibc}/lib/libnss_files.so.2"
 
           # Resolving sysroot symlinks without code exec
           "${pkgs.chroot-realpath}/bin/chroot-realpath"
+
+          # Finding etc overlay files in sysroot
+          "${config.system.nixos-init.package}/bin/find-etc"
+        ]
+        ++ lib.optionals config.system.nixos-init.enable [
+          "${config.system.nixos-init.package}/bin/switch-root"
+        ]
+        ++ lib.optionals config.environment.enableShell [
+          # required for services generated with writeShellScript and friends
+          pkgs.runtimeShell
+          # some tools like xfs still want the sh symlink
+          "${pkgs.bash}/bin"
         ]
         ++ jobScripts
         ++ map (c: builtins.removeAttrs c [ "text" ]) (builtins.attrValues cfg.contents);
@@ -574,7 +584,7 @@ in
           ) cfg.automounts
         );
 
-      services.initrd-find-nixos-closure = {
+      services.initrd-find-nixos-closure = lib.mkIf (!config.system.nixos-init.enable) {
         description = "Find NixOS closure";
 
         unitConfig = {
@@ -607,7 +617,6 @@ in
                         ;;
                 esac
             done
-
             # Sanity check
             if [ -z "''${closure:-}" ]; then
               echo 'No init= parameter on the kernel command line' >&2
@@ -650,7 +659,7 @@ in
         }
       ];
 
-      services.initrd-nixos-activation = {
+      services.initrd-nixos-activation = lib.mkIf (!config.system.nixos-init.enable) {
         after = [ "initrd-switch-root.target" ];
         requiredBy = [ "initrd-switch-root.service" ];
         before = [ "initrd-switch-root.service" ];
@@ -677,17 +686,35 @@ in
           '';
       };
 
-      # This will either call systemctl with the new init as the last parameter (which
-      # is the case when not booting a NixOS system) or with an empty string, causing
-      # systemd to bypass its verification code that checks whether the next file is a systemd
-      # and using its compiled-in value
-      services.initrd-switch-root.serviceConfig = {
-        EnvironmentFile = "-/etc/switch-root.conf";
-        ExecStart = [
-          ""
-          ''systemctl --no-block switch-root /sysroot "''${NEW_INIT}"''
-        ];
-      };
+      services.initrd-switch-root =
+        if config.system.nixos-init.enable then
+          {
+            path = [
+              pkgs.chroot-realpath
+              config.boot.initrd.systemd.package
+            ];
+            serviceConfig = {
+              ExecStart = [
+                ""
+                "${pkgs.nixos-init}/bin/switch-root"
+              ];
+            };
+          }
+        else
+          {
+            # This will either call systemctl with the new init as the last
+            # parameter (which is the case when not booting a NixOS system) or
+            # with an empty string, causing systemd to bypass its verification
+            # code that checks whether the next file is a systemd binary and
+            # using its compiled-in value.
+            serviceConfig = {
+              EnvironmentFile = "-/etc/switch-root.conf";
+              ExecStart = [
+                ""
+                ''systemctl --no-block switch-root /sysroot "''${NEW_INIT}"''
+              ];
+            };
+          };
 
       services.panic-on-fail = {
         wantedBy = [ "emergency.target" ];
