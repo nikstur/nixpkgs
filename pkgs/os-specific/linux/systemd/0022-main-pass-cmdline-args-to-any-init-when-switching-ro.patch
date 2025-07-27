@@ -1,0 +1,49 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: nikstur <nikstur@outlook.com>
+Date: Sat, 22 Mar 2025 19:14:50 +0100
+Subject: [PATCH] main: pass cmdline args to any init when switching root
+
+This enables switch-root from the initrd to an init that isn't systemd
+while still passing along the state. This way, we can start our own init
+(i.e. nixos-init) to setup the things we need to do before systemd
+starts in stage 2 while getting all the benefits of passing state from
+initrd to stage 2.
+---
+ src/core/main.c | 10 +++++++---
+ 1 file changed, 7 insertions(+), 3 deletions(-)
+
+diff --git a/src/core/main.c b/src/core/main.c
+index 4bd2d8df75..59b8996e51 100644
+--- a/src/core/main.c
++++ b/src/core/main.c
+@@ -2027,7 +2027,7 @@ static int do_reexecute(
+         args_size = argc + 5;
+         args = newa(const char*, args_size);
+ 
+-        if (!switch_root_init) {
++        if (1) {
+                 char sfd[STRLEN("--deserialize=") + DECIMAL_STR_MAX(int)];
+ 
+                 /* First try to spawn ourselves with the right path, and with full serialization. We do this
+@@ -2061,7 +2061,11 @@ static int do_reexecute(
+                  */
+                 valgrind_summary_hack();
+ 
+-                args[0] = SYSTEMD_BINARY_PATH;
++                if (switch_root_init) {
++                        args[0] = switch_root_init;
++                } else {
++                        args[0] = SYSTEMD_BINARY_PATH;
++                }
+                 (void) execv(args[0], (char* const*) args);
+ 
+                 if (objective == MANAGER_REEXECUTE) {
+@@ -2234,7 +2238,7 @@ static int invoke_main_loop(
+ 
+                         manager_set_switching_root(m, true);
+ 
+-                        if (!m->switch_root_init) {
++                        if (1) {
+                                 r = prepare_reexecute(m, &arg_serialization, ret_fds, true);
+                                 if (r < 0) {
+                                         *ret_error_message = "Failed to prepare for reexecution";

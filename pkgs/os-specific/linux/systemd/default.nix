@@ -250,6 +250,7 @@ stdenv.mkDerivation (finalAttrs: {
     # because we include the config snippet manually
     ./0019-meson-Don-t-link-ssh-dropins.patch
     ./0020-install-unit_file_exists_full-follow-symlinks.patch
+    ./0022-main-pass-cmdline-args-to-any-init-when-switching-ro.patch
   ]
   ++ lib.optionals (stdenv.hostPlatform.isLinux && stdenv.hostPlatform.isGnu) [
     ./0021-timesyncd-disable-NSCD-when-DNSSEC-validation-is-dis.patch

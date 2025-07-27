@@ -1376,19 +1376,20 @@ This is especially helpful to select tests or specify flags conditionally:
 
 ```nix
 {
-  disabledTests = [
-    # touches network
-    "download"
-    "update"
-  ]
-  ++ lib.optionals (pythonAtLeast "3.8") [
-    # broken due to python3.8 async changes
-    "async"
-  ]
-  ++ lib.optionals stdenv.buildPlatform.isDarwin [
-    # can fail when building with other packages
-    "socket"
-  ];
+  disabledTests =
+    [
+      # touches network
+      "download"
+      "update"
+    ]
+    ++ lib.optionals (pythonAtLeast "3.8") [
+      # broken due to python3.8 async changes
+      "async"
+    ]
+    ++ lib.optionals stdenv.buildPlatform.isDarwin [
+      # can fail when building with other packages
+      "socket"
+    ];
 }
 ```
 
@@ -2034,8 +2035,7 @@ and letting the package requiring the extra add the list to its dependencies
 {
   dependencies = [
     # ...
-  ]
-  ++ dask.optional-dependencies.complete;
+  ] ++ dask.optional-dependencies.complete;
 }
 ```
 
