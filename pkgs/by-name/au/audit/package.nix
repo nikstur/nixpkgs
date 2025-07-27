@@ -81,6 +81,7 @@ stdenv.mkDerivation (finalAttrs: {
     # capability dropping, currently mostly for plugins as those get spawned as root
     # see auditd-plugins(5)
     "--with-libcap-ng=yes"
+    "--libexecdir=${placeholder "bin"}/libexec"
     (if enablePython then "--with-python" else "--without-python")
   ];
 
