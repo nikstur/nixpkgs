@@ -36,6 +36,13 @@ in
 
   options = {
 
+    environment.enableShell = lib.mkOption {
+      default = true;
+      description = ''
+        Whether to enable a shell on your system.
+      '';
+    };
+
     environment.variables = lib.mkOption {
       default = { };
       example = {
@@ -201,7 +208,7 @@ in
 
   };
 
-  config = {
+  config = lib.mkIf cfg.enableShell {
 
     system.build.binsh = pkgs.bashInteractive;
 
