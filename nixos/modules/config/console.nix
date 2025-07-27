@@ -15,7 +15,7 @@ let
     pkgs.runCommand "keymap"
       {
         nativeBuildInputs = [ pkgs.buildPackages.kbd ];
-        LOADKEYS_KEYMAP_PATH = "${consoleEnv pkgs.kbd}/share/keymaps/**";
+        LOADKEYS_KEYMAP_PATH = "${consoleEnv cfg.package}/share/keymaps/**";
         preferLocalBuild = true;
       }
       ''
@@ -49,6 +49,8 @@ in
     enable = lib.mkEnableOption "virtual console" // {
       default = true;
     };
+
+    package = lib.mkPackageOption pkgs "kbd" { };
 
     font = lib.mkOption {
       type = with lib.types; nullOr (either str path);
@@ -157,13 +159,13 @@ in
     (lib.mkIf cfg.enable (
       lib.mkMerge [
         {
-          environment.systemPackages = [ pkgs.kbd ];
+          environment.systemPackages = [ cfg.package ];
 
           # Let systemd-vconsole-setup.service do the work of setting up the
           # virtual consoles.
           environment.etc."vconsole.conf".source = vconsoleConf;
           # Provide kbd with additional packages.
-          environment.etc.kbd.source = "${consoleEnv pkgs.kbd}/share";
+          environment.etc.kbd.source = "${consoleEnv cfg.package}/share";
 
           boot.initrd.preLVMCommands = lib.mkIf (!config.boot.initrd.systemd.enable) (
             lib.mkBefore ''
@@ -181,21 +183,29 @@ in
             "/etc/vconsole.conf".source = vconsoleConf;
             # Add everything if we want full console setup...
             "/etc/kbd" = lib.mkIf cfg.earlySetup {
-              source = "${consoleEnv config.boot.initrd.systemd.package.kbd}/share";
+              source = "${consoleEnv cfg.package}/share";
             };
             # ...but only the keymaps if we don't
             "/etc/kbd/keymaps" = lib.mkIf (!cfg.earlySetup) {
-              source = "${consoleEnv config.boot.initrd.systemd.package.kbd}/share/keymaps";
+              source = "${consoleEnv cfg.package}/share/keymaps";
             };
+            # TODO: Ideally this is not needed and we can just set the PATH of
+            # the service analogously to how we do it for the stage 2 service.
+            # However, it doesn't work. Until then, this is good enough.
+            "/usr/bin/setfont".source = "${cfg.package}/bin/setfont";
+            "/usr/bin/loadkeys".source = "${cfg.package}/bin/loadkeys";
           };
           boot.initrd.systemd.additionalUpstreamUnits = [
             "systemd-vconsole-setup.service"
           ];
           boot.initrd.systemd.storePaths = [
             "${config.boot.initrd.systemd.package}/lib/systemd/systemd-vconsole-setup"
-            "${config.boot.initrd.systemd.package.kbd}/bin/setfont"
-            "${config.boot.initrd.systemd.package.kbd}/bin/loadkeys"
+            "${cfg.package}/bin/setfont"
+            "${cfg.package}/bin/loadkeys"
             "${config.boot.initrd.systemd.package.kbd.gzip}/bin/gzip" # Fonts and keyboard layouts are compressed
+          ]
+          ++ lib.optionals (cfg.compression) [
+            "${cfg.package.gzip}/bin/gzip"
           ]
           ++ lib.optionals (cfg.font != null && lib.hasPrefix builtins.storeDir cfg.font) [
             "${cfg.font}"
@@ -213,7 +223,7 @@ in
             wantedBy = [ "multi-user.target" ];
             restartTriggers = [
               vconsoleConf
-              (consoleEnv pkgs.kbd)
+              (consoleEnv cfg.package)
             ];
             reloadIfChanged = true;
             serviceConfig = {
@@ -222,6 +232,8 @@ in
               ExecReload = "/run/current-system/systemd/bin/systemctl restart systemd-vconsole-setup";
             };
           };
+
+          systemd.services.systemd-vconsole-setup.path = [ cfg.package ];
         }
 
         (lib.mkIf (cfg.colors != [ ]) {
@@ -242,7 +254,7 @@ in
                 ''
               else
                 ''
-                  font="$(echo ${consoleEnv pkgs.kbd}/share/consolefonts/${cfg.font}.*)"
+                  font="$(echo ${consoleEnv cfg.package}/share/consolefonts/${cfg.font}.*)"
                 ''
             }
             if [[ $font == *.gz ]]; then
