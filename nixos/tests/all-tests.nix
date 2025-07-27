@@ -488,6 +488,9 @@ in
   activation-etc-overlay-immutable = runTest ./activation/etc-overlay-immutable.nix;
   activation-perlless = runTest ./activation/perlless.nix;
   activation-bashless = runTest ./activation/bashless.nix;
+  activation-bashless-initrd = pkgs.callPackage ./activation/bashless-initrd.nix {
+    initrd = pkgs.nixosTests.activation-bashless.nodes.machine.system.build.initialRamdisk;
+  };
   activation-nixos-init = runTest ./activation/nixos-init.nix;
   etcd = runTestOn [ "aarch64-linux" "x86_64-linux" ] ./etcd/etcd.nix;
   etcd-cluster = runTestOn [ "aarch64-linux" "x86_64-linux" ] ./etcd/etcd-cluster.nix;
