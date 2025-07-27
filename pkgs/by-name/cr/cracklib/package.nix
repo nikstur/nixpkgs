@@ -8,6 +8,7 @@ in
   fetchurl,
   zlib,
   gettext,
+  bash,
   fetchpatch2,
   lists ? [
     (fetchurl {
@@ -36,12 +37,22 @@ stdenv.mkDerivation rec {
     })
   ];
 
+  outputs = [
+    "bin"
+    "out"
+    "dev"
+    "man"
+  ];
+
+  strictDeps = true;
+
   nativeBuildInputs = lib.optional (
     stdenv.hostPlatform != stdenv.buildPlatform
   ) buildPackages.cracklib;
   buildInputs = [
     zlib
     gettext
+    bash
   ];
 
   postPatch =
