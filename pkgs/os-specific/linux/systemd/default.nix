@@ -452,7 +452,6 @@ stdenv.mkDerivation (finalAttrs: {
     (lib.mesonOption "version-tag" version)
     (lib.mesonOption "mode" "release")
     (lib.mesonOption "tty-gid" "3") # tty in NixOS has gid 3
-    (lib.mesonOption "debug-shell" "${bashInteractive}/bin/bash")
     (lib.mesonOption "pamconfdir" "${placeholder "out"}/etc/pam.d")
     (lib.mesonOption "shellprofiledir" "${placeholder "out"}/etc/profile.d")
     (lib.mesonOption "kmod-path" "${kmod}/bin/kmod")
