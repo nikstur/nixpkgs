@@ -27,7 +27,6 @@
   # Mandatory dependencies
   libcap,
   util-linux,
-  kbd,
   kmod,
   libxcrypt,
 
@@ -469,10 +468,6 @@ stdenv.mkDerivation (finalAttrs: {
     (lib.mesonOption "pkgconfiglibdir" "${placeholder "dev"}/lib/pkgconfig")
     (lib.mesonOption "pkgconfigdatadir" "${placeholder "dev"}/share/pkgconfig")
 
-    # Keyboard
-    (lib.mesonOption "loadkeys-path" "${kbd}/bin/loadkeys")
-    (lib.mesonOption "setfont-path" "${kbd}/bin/setfont")
-
     # SBAT
     (lib.mesonOption "sbat-distro" "nixos")
     (lib.mesonOption "sbat-distro-summary" "NixOS")
@@ -910,7 +905,6 @@ stdenv.mkDerivation (finalAttrs: {
       withUtmp
       util-linux
       kmod
-      kbd
       ;
 
     # Many TPM2-related units are only installed if this trio of features are
