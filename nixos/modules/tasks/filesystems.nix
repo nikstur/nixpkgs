@@ -503,7 +503,9 @@ in
       ];
     };
 
-    systemd.services = {
+    # This is only necessary when not using systemd initrd because there
+    # systemd takes care of mounting this API filesystem.
+    systemd.services = lib.mkIf (!config.boot.initrd.systemd.enable) {
       # Mount /sys/fs/pstore for evacuating panic logs and crashdumps from persistent storage onto the disk using systemd-pstore.
       # This cannot be done with the other special filesystems because the pstore module (which creates the mount point) is not loaded then.
       "mount-pstore" = {
