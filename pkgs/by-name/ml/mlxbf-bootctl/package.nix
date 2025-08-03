@@ -28,7 +28,6 @@ stdenv.mkDerivation rec {
     # is the only relevant platform.
     platforms = [ "aarch64-linux" ];
     maintainers = with lib.maintainers; [
-      nikstur
       thillux
     ];
   };

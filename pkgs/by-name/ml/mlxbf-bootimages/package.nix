@@ -36,7 +36,6 @@ stdenv.mkDerivation rec {
     license = licenses.unfree;
     platforms = [ "aarch64-linux" ];
     maintainers = with maintainers; [
-      nikstur
       thillux
     ];
   };
