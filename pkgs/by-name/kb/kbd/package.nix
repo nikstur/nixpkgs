@@ -9,17 +9,22 @@
   check,
   pam,
   bash,
+  bashNonInteractive,
   coreutils,
   gzip,
   bzip2,
   xz,
   zstd,
   gitUpdater,
+
+  compress ? false,
 }:
 
 stdenv.mkDerivation rec {
   pname = "kbd";
   version = "2.8.0";
+
+  __structuredAttrs = true;
 
   src = fetchurl {
     url = "mirror://kernel/linux/utils/kbd/${pname}-${version}.tar.xz";
@@ -44,6 +49,9 @@ stdenv.mkDerivation rec {
   ++ lib.optionals (!lib.systems.equals stdenv.buildPlatform stdenv.hostPlatform) [
     "ac_cv_func_malloc_0_nonnull=yes"
     "ac_cv_func_realloc_0_nonnull=yes"
+  ]
+  ++ lib.optionals (!compress) [
+    "--disable-compress"
   ];
 
   patches = [
@@ -63,18 +71,19 @@ stdenv.mkDerivation rec {
     mv colemak/{en-latin9,colemak}.map
     popd
 
+    sed -i '
+      1i prefix:=$(vlock)
+      1i bindir := $(vlock)/bin' \
+      src/vlock/Makefile.in \
+      src/vlock/Makefile.am
+  ''
+  + lib.optionalString compress ''
     # Fix paths to decompressors. Trailing space to avoid replacing `xz` in `".xz"`.
     substituteInPlace src/libkbdfile/kbdfile.c \
       --replace-fail 'gzip '  '${gzip}/bin/gzip ' \
       --replace-fail 'bzip2 ' '${bzip2.bin}/bin/bzip2 ' \
       --replace-fail 'xz '    '${xz.bin}/bin/xz ' \
       --replace-fail 'zstd '  '${zstd.bin}/bin/zstd '
-
-    sed -i '
-      1i prefix:=$(vlock)
-      1i bindir := $(vlock)/bin' \
-      src/vlock/Makefile.in \
-      src/vlock/Makefile.am
   '';
 
   enableParallelBuilding = true;
@@ -99,6 +108,11 @@ stdenv.mkDerivation rec {
     flex
   ];
   strictDeps = true;
+
+  outputChecks.out.disallowedRequisites = lib.optionals (!compress) [
+    bash
+    bashNonInteractive
+  ];
 
   passthru.tests = {
     inherit (nixosTests) keymap kbd-setfont-decompress kbd-update-search-paths-patch;
