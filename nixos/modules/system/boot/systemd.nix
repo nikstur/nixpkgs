@@ -636,6 +636,14 @@ in
         "systemd/user-preset/00-nixos.preset".text = ''
           ignore *
         '';
+
+        "systemd-generators-path".text = lib.makeBinPath (
+          # systemd-ssh-generator needs sshd in PATH
+          lib.optionals config.services.openssh.enable [ config.services.openssh.package ]
+        );
+
+        "systemd/system-environment-generators/env-generator".source =
+          "${config.system.nixos-init.package}/bin/env-generator";
       };
 
     services.dbus.enable = true;
@@ -683,12 +691,7 @@ in
     systemd.managerEnvironment = {
       # Doesn't contain systemd itself - everything works so it seems to use the compiled-in value for its tools
       # util-linux is needed for the main fsck utility wrapping the fs-specific ones
-      PATH = lib.makeBinPath (
-        config.system.fsPackages
-        ++ [ cfg.package.util-linux ]
-        # systemd-ssh-generator needs sshd in PATH
-        ++ lib.optional config.services.openssh.enable config.services.openssh.package
-      );
+      PATH = lib.makeBinPath (config.system.fsPackages ++ [ cfg.package.util-linux ]);
       LOCALE_ARCHIVE = "/run/current-system/sw/lib/locale/locale-archive";
       TZDIR = "/etc/zoneinfo";
       # If SYSTEMD_UNIT_PATH ends with an empty component (":"), the usual unit load path will be appended to the contents of the variable

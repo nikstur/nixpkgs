@@ -2,7 +2,7 @@ use std::{env, io::Write, process::ExitCode};
 
 use log::Level;
 
-use nixos_init::{chroot_realpath, find_etc, initrd_init};
+use nixos_init::{chroot_realpath, env_generator, find_etc, initrd_init};
 
 fn main() -> ExitCode {
     let arg0 = env::args()
@@ -15,6 +15,7 @@ fn main() -> ExitCode {
         "find-etc" => find_etc,
         "chroot-realpath" => chroot_realpath,
         "initrd-init" => initrd_init,
+        "env-generator" => env_generator,
         _ => {
             log::error!("Command {arg0} unknown");
             return ExitCode::FAILURE;

@@ -1,6 +1,7 @@
 mod activate;
 mod chroot_realpath;
 mod config;
+mod env_generator;
 mod find_etc;
 mod fs;
 mod init;
@@ -15,6 +16,7 @@ use anyhow::{Context, Result, bail};
 pub use crate::{
     activate::activate,
     chroot_realpath::{canonicalize_in_chroot, chroot_realpath},
+    env_generator::env_generator,
     find_etc::find_etc,
     init::init,
     initrd_init::initrd_init,

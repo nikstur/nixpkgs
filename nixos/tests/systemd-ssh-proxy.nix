@@ -48,6 +48,10 @@ in
     virthost.succeed("cp '${snakeOilEd25519PrivateKey}' ~/.ssh/id_ed25519")
     virthost.succeed("chmod 600 ~/.ssh/id_ed25519")
 
+    with subtest("Check the environment generator"):
+      print(virthost.succeed("cat /etc/systemd-generators-path"))
+      print(virthost.succeed("/etc/systemd/system-environment-generators/env-generator"))
+
     with subtest("ssh into a container with AF_UNIX"):
       virthost.wait_for_unit("container@guest.service")
       virthost.wait_until_succeeds("ssh -i ~/.ssh/id_ed25519 unix/run/systemd/nspawn/unix-export/guest/ssh echo meow | grep meow")

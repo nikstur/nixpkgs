@@ -48,6 +48,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
     "initrd-init"
     "find-etc"
     "chroot-realpath"
+    "env-generator"
   ];
 
   postInstall = ''
